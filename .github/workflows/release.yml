@@ -1,0 +1,26 @@
+name: Auto Release ZIP
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Create ZIP
+        run: zip -r WebUI-Release.zip . -x "*.git*" ".github/*"
+
+      - name: 🚀 Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: WebUI-Release.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
