@@ -8,6 +8,10 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # --- TAMBAHKAN BARIS INI ---
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    # ---------------------------
     permissions:
       contents: write
     steps:
