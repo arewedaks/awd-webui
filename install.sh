@@ -5,7 +5,7 @@ php_data_dir="/data/adb/php8"
 php_bin_dir="${php_data_dir}/files/bin"
 system_uid="1000"
 system_gid="1000"
-version="3.3.7"
+version="3.3.5"
 
 cd "$DIR_MODUL" || { echo "❌ Folder $DIR_MODUL tidak ditemukan!"; exit 1; }
 
