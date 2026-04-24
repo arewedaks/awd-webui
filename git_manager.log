@@ -12,3 +12,16 @@ main'
 fatal: '' is not a valid tag name.
 fatal: invalid refspec ''
 [2026-04-24 15:47:48] INFO: Update versi ke ...
+[main 4800b0b] Release
+ 1 file changed, 9 insertions(+)
+[2026-04-24 15:47:48] INFO: Pushing branch & tag...
+To https://github.com/arewedaks/awd-webui.git
+ ! [rejected]        main -> main (non-fast-forward)
+error: failed to push some refs to 'https://github.com/arewedaks/awd-webui.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+fatal: '' is not a valid tag name.
+fatal: invalid refspec ''
+[2026-04-24 15:47:53] INFO: Update versi ke ...
