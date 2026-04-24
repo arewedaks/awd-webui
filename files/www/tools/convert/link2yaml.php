@@ -30,54 +30,32 @@ if (file_exists($save_path)) {
 if (isset($_POST['process_and_save'])) {
     $raw_link = $_POST['link'];
     if (!empty($raw_link)) {
-        $escaped_link = escapeshellarg($raw_link);
         $trimmed_input = trim($raw_link);
+        $yaml_result = "";
         
-        // --- PERBAIKAN VARIABEL DI SINI ---
-        if (strpos($trimmed_input, '- name:') === 0 || strpos($trimmed_input, 'proxies:') === 0) {
-            $command = "$php_bin $backend_script clean $escaped_link 2>&1";
+        if (strpos($trimmed_input, '- name:') === 0 || strpos(strtolower($trimmed_input), 'proxies:') === 0) {
+            $yaml_result = $raw_link; 
         } else {
+            $escaped_link = escapeshellarg($raw_link);
             $command = "$php_bin $backend_script convert $escaped_link 2>&1";
+            $yaml_result = shell_exec($command);
         }
-        // ----------------------------------
 
-        $yaml_result = shell_exec($command);
+        if ($yaml_result && strlen(trim($yaml_result)) > 5) {
+            $existing_content = file_exists($save_path) ? file_get_contents($save_path) : "";
+            $combined_content = $existing_content . "\n" . $yaml_result;
+            
+            $escaped_combined = escapeshellarg($combined_content);
+            $clean_cmd = "$php_bin $backend_script clean $escaped_combined 2>&1";
+            $final_cleaned = shell_exec($clean_cmd);
 
-        if ($yaml_result && strlen(trim($yaml_result)) > 10) {
-            $dir = dirname($save_path);
-            if (!is_writable($dir) && !is_dir($dir)) {
-                 $message = "Error: Folder tidak writable.";
-            } else {
-                $final_content = str_replace("\r\n", "\n", $yaml_result);
-                if (substr($final_content, -1) != "\n") $final_content .= "\n";
-
-                if (!file_exists($save_path)) {
-                    $header = "proxies:\n";
-                    if (strpos($final_content, "proxies:") === false) $final_content = $header . $final_content;
-                    file_put_contents($save_path, $final_content);
-                } else {
-                    $content_to_append = str_replace("proxies:\n", "", $final_content);
-                    $content_to_append = ltrim($content_to_append);
-                    file_put_contents($save_path, $content_to_append, FILE_APPEND);
-                }
-
-                // Clean ulang file setelah append
-                $full_content_now = file_get_contents($save_path);
-                $escaped_full = escapeshellarg($full_content_now);
-                
-                // --- PERBAIKAN VARIABEL DI SINI ---
-                $clean_cmd = "$php_bin $backend_script clean $escaped_full 2>&1";
-                // ----------------------------------
-                
-                $cleaned_res = shell_exec($clean_cmd);
-
-                if ($cleaned_res && strlen($cleaned_res) > 10) {
-                    file_put_contents($save_path, $cleaned_res);
-                }
-
-                $message = "Sukses! Akun disimpan.";
+            if ($final_cleaned !== null && strlen(trim($final_cleaned)) >= 8) {
+                file_put_contents($save_path, $final_cleaned);
+                $message = "Sukses! Akun disimpan dengan format rapi.";
                 $raw_link = "";
                 header("Refresh:1"); 
+            } else {
+                $message = "Gagal memproses susunan file.";
             }
         } else {
             $message = "Gagal. Format tidak valid atau backend error.";
@@ -93,13 +71,10 @@ if (isset($_POST['delete_account_direct'])) {
         $escaped_content = escapeshellarg($current_content);
         $escaped_name = escapeshellarg($target_name);
         
-        // --- PERBAIKAN VARIABEL DI SINI ---
         $command = "$php_bin $backend_script delete $escaped_content $escaped_name 2>&1";
-        // ----------------------------------
-        
         $new_content = shell_exec($command);
         
-        if ($new_content) {
+        if ($new_content !== null && strlen(trim($new_content)) >= 8) {
             file_put_contents($save_path, $new_content);
             $message = "Akun '$target_name' dihapus.";
             header("Refresh:1");
@@ -115,10 +90,7 @@ if (isset($_POST['account_selector'])) {
         $escaped_content = escapeshellarg($current_content);
         $escaped_name = escapeshellarg($target_name);
 
-        // --- PERBAIKAN VARIABEL DI SINI ---
         $command = "$php_bin $backend_script get $escaped_content $escaped_name 2>&1";
-        // ----------------------------------
-        
         $fetched_content = shell_exec($command);
         
         if (trim($fetched_content)) {
@@ -142,13 +114,10 @@ if (isset($_POST['update_single_account'])) {
         $escaped_name = escapeshellarg($old_name);
         $escaped_new_block = escapeshellarg($new_content_block);
 
-        // --- PERBAIKAN VARIABEL DI SINI ---
         $command = "$php_bin $backend_script replace $escaped_content $escaped_name $escaped_new_block 2>&1";
-        // ----------------------------------
-        
         $updated_full_file = shell_exec($command);
 
-        if ($updated_full_file && strlen($updated_full_file) > 10) {
+        if ($updated_full_file !== null && strlen(trim($updated_full_file)) >= 8) {
             file_put_contents($save_path, $updated_full_file);
             $message = "Akun berhasil diperbarui!";
             $edit_mode = false;
@@ -163,32 +132,13 @@ if (isset($_POST['clean_file'])) {
         $current_content = file_get_contents($save_path);
         $escaped_content = escapeshellarg($current_content);
         
-        // --- PERBAIKAN VARIABEL DI SINI ---
         $command = "$php_bin $backend_script clean $escaped_content 2>&1";
-        // ----------------------------------
-        
         $cleaned_content = shell_exec($command);
-        if ($cleaned_content && strlen($cleaned_content) > 10) {
+        
+        if ($cleaned_content !== null && strlen(trim($cleaned_content)) >= 8) {
             file_put_contents($save_path, $cleaned_content);
-            $message = "File berhasil dirapikan.";
+            $message = "File berhasil dirapikan secara ketat.";
             header("Refresh:1");
-        }
-    }
-}
-
-// 6. SAVE MANUAL EDITOR
-if (isset($_POST['save_manual_full'])) {
-    $manual_content = $_POST['full_editor_content'];
-    if (!empty($manual_content)) {
-        $dir = dirname($save_path);
-        if (!is_writable($dir) && !is_dir($dir)) {
-             $message = "Error: Folder tidak writable.";
-        } else {
-            $fixed_content = str_replace("\r\n", "\n", $manual_content);
-            if (file_put_contents($save_path, $fixed_content) !== false) {
-                $message = "Sukses! File disimpan ulang.";
-                header("Refresh:1");
-            }
         }
     }
 }
@@ -216,35 +166,16 @@ if (isset($_POST['save_manual_full'])) {
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
         
         .con { width: 100%; max-width: 800px; background: var(--card); padding: 25px; border-radius: var(--rad); border: 1px solid var(--border); box-shadow: var(--shd); }
-        
-        /* UPDATE: JUDUL TIDAK TEBAL */
         h2 { text-align: left; color: var(--pri); margin: 0 0 5px; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; }
-        
         .sub-t { text-align: left; color: var(--sub); font-size: 0.8rem; font-weight: 600; margin-bottom: 20px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px; width: 100%; }
         
-        textarea { 
-            width: 100%; 
-            background: var(--code-bg); 
-            border: 1px solid var(--border); 
-            color: var(--text); 
-            padding: 12px; 
-            border-radius: 8px; 
-            font-family: 'SF Mono', 'Segoe UI Mono', 'Roboto Mono', 'Consolas', 'Courier New', monospace; 
-            font-size: 0.85rem; 
-            line-height: 1.6;
-            letter-spacing: 0.3px;
-            resize: none; 
-            min-height: 100px; 
-            max-height: 350px; 
-            overflow-y: auto; 
-            transition: height 0.1s ease;
-        }
+        /* UPDATE: white-space diubah ke pre-wrap agar text panjang otomatis turun */
+        textarea { width: 100%; background: var(--code-bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 8px; font-family: 'SF Mono', 'Segoe UI Mono', 'Roboto Mono', 'Consolas', 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; letter-spacing: 0.3px; resize: none; min-height: 100px; max-height: 350px; overflow-y: auto; transition: height 0.1s ease; white-space: pre-wrap; }
         textarea:focus { border-color: var(--pri); }
 
         .btn-grp { display: flex; gap: 10px; margin-top: 15px; }
         button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: 0.2s; font-size: 0.9rem; color: #fff; }
         button:active { transform: scale(0.98); }
-        
         .btn-pri { background: var(--pri); color: #000; }
         .btn-sec { background: var(--border); color: var(--text); }
         .btn-dan { background: var(--danger); }
@@ -274,6 +205,10 @@ if (isset($_POST['save_manual_full'])) {
         
         .btn-head { background: var(--border); width: auto; padding: 8px 16px; font-size: 0.8rem; flex: none; display: flex; align-items: center; gap: 5px; color: var(--text); }
         .btn-head-s { background: var(--pri); color: #000; }
+        
+        /* Iframe Styles */
+        .iframe-container { flex-grow: 1; width: 100%; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
@@ -295,17 +230,16 @@ if (isset($_POST['save_manual_full'])) {
 </div>
 <?php endif; ?>
 
-<div id="advEditor" class="modal" style="display:none">
-    <form method="post" style="display:flex;flex-direction:column;height:100%">
-        <div class="modal-head">
-            <div class="modal-act">
-                <button type="button" class="btn-head" onclick="document.getElementById('advEditor').style.display='none'">← Back</button>
-                <button type="submit" name="save_manual_full" class="btn-head btn-head-s" onclick="return confirm('Overwrite file?')">Save All</button>
-            </div>
-            <span class="modal-t">Full Editor</span>
+<div id="advModal" class="modal" style="display:none; padding: 0;">
+    <div class="modal-head" style="padding: 15px 20px; margin-bottom: 0; background: var(--bg); border-bottom: 1px solid var(--border);">
+        <div class="modal-act">
+            <button type="button" class="btn-head" onclick="closeAdvEditor()">← Back</button>
         </div>
-        <textarea name="full_editor_content" class="modal-area"><?php echo htmlspecialchars($current_file_content); ?></textarea>
-    </form>
+        <span class="modal-t">Advanced Editor</span>
+    </div>
+    <div class="iframe-container" style="border-radius: 0; border: none;">
+        <iframe id="tinyFrame" src=""></iframe>
+    </div>
 </div>
 
 <div class="con">
@@ -350,18 +284,29 @@ if (isset($_POST['save_manual_full'])) {
 
     <div class="btn-grp" style="margin-top:25px">
         <form method="post" style="flex:1"><button type="submit" name="clean_file" class="btn-sec" style="width:100%">Fix Format</button></form>
-        <button type="button" class="btn-sec" onclick="document.getElementById('advEditor').style.display='flex'">Advanced Editor</button>
+        <button type="button" class="btn-sec" onclick="openAdvEditor()">Advanced Editor</button>
     </div>
 </div>
 
 <script>
-    // AUTO RESIZE
+    // FUNGSI UNTUK MODAL IFRAME ADVANCED EDITOR
+    function openAdvEditor() {
+        document.getElementById('advModal').style.display = 'flex';
+        // Set URL Tiny File Manager ke dalam src iframe
+        document.getElementById('tinyFrame').src = '/tiny/index.php?p=data/adb/box/clash/proxy_provider&edit=AKUN-VPN.yaml';
+    }
+
+    function closeAdvEditor() {
+        document.getElementById('advModal').style.display = 'none';
+        // Kosongkan iframe untuk menghemat resource memori saat ditutup
+        document.getElementById('tinyFrame').src = '';
+    }
+
     function autoResize() {
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
     }
 
-    // BUTTON TEXT
     const ta = document.getElementById('inLink');
     const btn = document.getElementById('btnAction');
 
@@ -375,7 +320,6 @@ if (isset($_POST['save_manual_full'])) {
         }
     }
 
-    // INIT
     document.querySelectorAll('textarea').forEach(t => {
         t.addEventListener('input', autoResize);
         t.style.height = 'auto';

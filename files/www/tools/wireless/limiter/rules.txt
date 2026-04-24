@@ -1,0 +1,2 @@
+GLOBAL|0mbit|0mbit
+f6:e6:32:c7:89:0e|8mbit|3mbit

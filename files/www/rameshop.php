@@ -60,52 +60,88 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#fb8c00">
+    <meta name="theme-color" content="#A47B5A">
     <title>AWD Ui - <?php echo $deviceName; ?></title>
     <link rel="icon" href="webui/assets/luci.ico" type="image/x-icon">
     
     <style>
-        /* --- CSS VARIABLES --- */
+        /* --- CSS VARIABLES (VISIONOS CHOCOLATE - NO IMAGE) --- */
         :root {
-            --bg-body: #f8f9fa; --bg-sidebar: #ffffff; --bg-header: #ffffff;
-            --text-main: #2d3748; --text-muted: #718096;
-            --primary: #fb8c00; --primary-dark: #ef6c00; --primary-soft: rgba(251, 140, 0, 0.12);
-            --border-color: #e2e8f0; --shadow: 0 4px 15px rgba(0,0,0,0.05);
-            --hover-bg: #fff3e0; --scrollbar: #cbd5e0;
+            /* LIGHT MODE: Gradient CSS Ringan */
+            --bg-color: radial-gradient(circle at top center, #FAF0E6 0%, #D2B48C 100%);
             
-            /* Warna Status Baru (Lebih Modern) */
-            --success-bg: rgba(76, 175, 80, 0.15); 
+            --card-bg: rgba(255, 248, 240, 0.6);
+            --blur: blur(25px) saturate(150%);
+            
+            --text-main: #3E2A1C; 
+            --text-muted: #7A5C43;
+            
+            --primary: #B87333; 
+            --primary-dark: #8B4513; 
+            --primary-soft: rgba(184, 115, 51, 0.15);
+            
+            --border-color: rgba(255, 255, 255, 0.4); 
+            --shadow: 0 8px 32px rgba(62, 42, 28, 0.1);
+            --hover-bg: rgba(255, 255, 255, 0.5); 
+            --scrollbar: rgba(184, 115, 51, 0.4);
+            
+            --success-bg: rgba(52, 199, 89, 0.15); 
             --success-text: #2e7d32;
-            --danger-bg: rgba(244, 67, 54, 0.15);
+            --danger-bg: rgba(255, 59, 48, 0.15);
             --danger-text: #c62828;
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg-body: #121212; --bg-sidebar: #1e1e1e; --bg-header: #1e1e1e;
-                --text-main: #e0e0e0; --text-muted: #a0a0a0;
-                --primary: #fb8c00; --primary-dark: #ff9800; --primary-soft: rgba(251, 140, 0, 0.15);
-                --border-color: #333333; --shadow: 0 4px 6px rgba(0,0,0,0.4);
-                --hover-bg: #2c2c2c; --scrollbar: #424242;
+                /* DARK MODE: Gradient CSS Ringan */
+                --bg-color: radial-gradient(circle at top center, #2C1A0D 0%, #0A0502 100%);
                 
-                --success-bg: rgba(76, 175, 80, 0.2); 
+                --card-bg: rgba(30, 18, 10, 0.45);
+                --blur: blur(25px) saturate(150%);
+                
+                --text-main: #FDF5E6; 
+                --text-muted: #C0B2A2;
+                
+                --primary: #C19A6B; 
+                --primary-dark: #D2B48C; 
+                --primary-soft: rgba(193, 154, 107, 0.15);
+                
+                --border-color: rgba(255, 255, 255, 0.12); 
+                --shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+                --hover-bg: rgba(255, 255, 255, 0.08); 
+                --scrollbar: rgba(193, 154, 107, 0.4);
+                
+                --success-bg: rgba(52, 199, 89, 0.2); 
                 --success-text: #81c784;
-                --danger-bg: rgba(244, 67, 54, 0.2);
-                --danger-text: #e57373;
+                --danger-bg: rgba(255, 69, 58, 0.2);
+                --danger-text: #ff6b6b;
             }
         }
 
         /* --- BASE STYLES --- */
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         body { 
-            margin: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background-color: var(--bg-body); color: var(--text-main); 
+            margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg-color); /* Menggunakan gradient CSS murni */
+            background-attachment: fixed;
+            color: var(--text-main); 
             overflow-x: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
         }
 
-        /* --- SIDEBAR --- */
+        /* --- CANVAS FALLING LEAVES --- */
+        #leaves-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; 
+            z-index: -1; 
+        }
+
+        /* --- SIDEBAR (GLASSMORPHISM) --- */
         .sidebar { 
             height: 100vh; width: 260px; position: fixed; top: 0; left: -260px; 
-            background-color: var(--bg-sidebar); border-right: 1px solid var(--border-color); 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            border-right: 1px solid var(--border-color); 
             z-index: 1000; overflow-y: auto; display: flex; flex-direction: column; 
             box-shadow: var(--shadow); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
             will-change: transform; 
@@ -119,14 +155,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             gap: 12px; letter-spacing: 0.5px; 
         }
         .logo-animated { 
-            background: linear-gradient(90deg, var(--primary), var(--primary-dark), #ffd54f, var(--primary)); 
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark), #E6D7C3, var(--primary)); 
             background-size: 300% auto; -webkit-background-clip: text; 
             -webkit-text-fill-color: transparent; background-clip: text; color: transparent; 
-            animation: gradientFlow 3s linear infinite; display: inline-block; will-change: background-position; 
+            animation: gradientFlow 4s linear infinite; display: inline-block; will-change: background-position; 
         }
         @keyframes gradientFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-        /* --- REDESIGN STATUS INTERNET --- */
+        /* --- STATUS INTERNET --- */
         .status-wrapper {
             padding: 0 20px 15px 20px;
             border-bottom: 1px solid var(--border-color);
@@ -134,76 +170,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .connection-card {
-            display: flex;
-            align-items: center;
-            justify-content: space-between; /* Icon kiri, text kanan */
-            padding: 10px 15px;
-            border-radius: 12px; /* Sama dengan menu items */
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            border: 1px solid transparent;
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 10px 15px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;
+            transition: all 0.3s ease; border: 1px solid transparent;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
 
-        /* Style saat Online */
-        .connection-card.online {
-            background-color: var(--success-bg);
-            color: var(--success-text);
-            border-color: rgba(76, 175, 80, 0.3);
-        }
+        .connection-card.online { background-color: var(--success-bg); color: var(--success-text); border-color: rgba(76, 175, 80, 0.2); }
+        .connection-card.offline { background-color: var(--danger-bg); color: var(--danger-text); border-color: rgba(244, 67, 54, 0.2); }
 
-        /* Style saat Offline */
-        .connection-card.offline {
-            background-color: var(--danger-bg);
-            color: var(--danger-text);
-            border-color: rgba(244, 67, 54, 0.3);
-        }
+        .status-content { display: flex; align-items: center; gap: 10px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
-        .status-content {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .connection-card.online .status-dot { background-color: var(--success-text); animation: pulse-green 2s infinite; }
+        .connection-card.offline .status-dot { background-color: var(--danger-text); animation: pulse-red 2s infinite; }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
+        @keyframes pulse-green { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); } }
+        @keyframes pulse-red { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.5); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(244, 67, 54, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); } }
 
-        /* Animasi Denyut (Pulse) */
-        .connection-card.online .status-dot {
-            background-color: var(--success-text);
-            box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
-            animation: pulse-green 2s infinite;
-        }
-        .connection-card.offline .status-dot {
-            background-color: var(--danger-text);
-            box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
-            animation: pulse-red 2s infinite;
-        }
-
-        @keyframes pulse-green {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
-        }
-        @keyframes pulse-red {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(244, 67, 54, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
-        }
-
-        .status-icon {
-            width: 16px;
-            height: 16px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2.5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
+        .status-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 
         /* --- MENU ITEMS --- */
         ul { list-style: none; padding: 10px 15px; margin: 0; flex-grow: 1; } 
@@ -212,13 +197,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         a, .dropdown-btn { 
             display: flex; align-items: center; padding: 12px 16px; 
             color: var(--text-muted); text-decoration: none; border-radius: 12px; 
-            font-size: 0.95rem; font-weight: 600; transition: background-color 0.2s, color 0.2s; 
+            font-size: 0.95rem; font-weight: 600; transition: background-color 0.2s, color 0.2s, transform 0.2s; 
             cursor: pointer; background: transparent; border: none; width: 100%; text-align: left; 
         }
         a:hover, .dropdown-btn:hover, a.active-link { 
             background-color: var(--hover-bg); color: var(--primary); transform: translateX(3px); 
         }
-        a.active-link { background-color: var(--primary-soft); }
+        a.active-link { background-color: var(--primary-soft); border: 1px solid var(--border-color); }
         
         .icon { 
             width: 22px; height: 22px; margin-right: 12px; stroke-width: 2; fill: none; 
@@ -230,32 +215,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .dropdown-btn.active .arrow { transform: rotate(180deg); }
         
         .dropdown-container { display: none; padding-left: 12px; margin-top: 2px; }
-        .dropdown-container.show { display: block; animation: slideDown 0.2s ease-out; }
+        .dropdown-container.show { display: block; animation: slideDownMenu 0.2s ease-out; }
+        @keyframes slideDownMenu { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        
         .dropdown-container a { 
             font-size: 0.9rem; padding: 10px 15px; font-weight: 500; 
             border-left: 2px solid transparent; border-radius: 0 12px 12px 0; 
         }
         .dropdown-container a:hover { border-left-color: var(--primary); }
 
-        /* --- HEADER & LAYOUT --- */
+        /* --- HEADER & LAYOUT (GLASSMORPHISM) --- */
         .header { 
             position: fixed; top: 0; left: 0; right: 0; height: 65px; 
-            background-color: var(--bg-header); border-bottom: 1px solid var(--border-color); 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            border-bottom: 1px solid var(--border-color); 
             display: flex; align-items: center; justify-content: space-between; padding: 0 20px; 
-            z-index: 900; transition: padding-left 0.3s; box-shadow: 0 2px 10px rgba(0,0,0,0.02); 
+            z-index: 900; transition: padding-left 0.3s; box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
         }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .toggle-btn { 
             background: none; border: none; cursor: pointer; color: var(--text-main); 
-            padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; 
+            padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: 0.2s;
         }
         .toggle-btn:hover { background: var(--hover-bg); color: var(--primary); }
         .device-name { font-weight: 700; font-size: 1rem; color: var(--primary); letter-spacing: 0.5px; }
 
         .quick-menu { 
             display: flex; gap: 12px; position: absolute; left: 50%; transform: translateX(-50%); 
-            background: var(--bg-body); padding: 5px 15px; border-radius: 30px; 
-            border: 1px solid var(--border-color); 
+            background: var(--card-bg); padding: 5px 15px; border-radius: 30px; 
+            border: 1px solid var(--border-color); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
         }
         .quick-item { 
             color: var(--text-muted); cursor: pointer; padding: 8px; border-radius: 50%; 
@@ -268,29 +257,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .action-btn { 
             background: transparent; border: 1px solid var(--border-color); color: var(--text-main); 
             width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; 
-            justify-content: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            justify-content: center; cursor: pointer; transition: all 0.3s ease; 
         }
         .action-btn svg { width: 20px; height: 20px; }
         .btn-refresh:hover { color: var(--primary); border-color: var(--primary); background: var(--hover-bg); transform: rotate(15deg); }
-        .btn-logout:hover { color: #f5365c; border-color: #f5365c; background: rgba(245, 54, 92, 0.08); transform: scale(1.05); }
+        .btn-logout:hover { color: #ff3b30; border-color: #ff3b30; background: rgba(255, 59, 48, 0.1); transform: scale(1.05); }
 
         .main-content { 
             margin-top: 65px; height: calc(100vh - 65px); width: 100%; transition: margin-left 0.3s; 
-            background-color: var(--bg-body); background-image: radial-gradient(var(--border-color) 1px, transparent 1px); 
-            background-size: 20px 20px; 
+            background-color: transparent; 
         }
-        iframe { width: 100%; height: 100%; border: none; display: block; }
+        iframe { width: 100%; height: 100%; border: none; display: block; border-radius: 0; }
 
         .overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.4); z-index: 950; backdrop-filter: blur(2px); 
+            background: rgba(0,0,0,0.3); z-index: 950; backdrop-filter: blur(5px); 
             opacity: 0; pointer-events: none; transition: opacity 0.3s; will-change: opacity; 
         }
         .overlay.active { opacity: 1; pointer-events: auto; }
         
         .loader { 
             position: fixed; top: 80px; left: 50%; transform: translateX(-50%); 
-            background: var(--bg-sidebar); padding: 10px 20px; border-radius: 30px; 
+            background: var(--card-bg); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            padding: 10px 20px; border-radius: 30px; 
             box-shadow: 0 5px 20px rgba(0,0,0,0.1); font-size: 0.9rem; font-weight: bold; 
             color: var(--primary); display: none; align-items: center; gap: 10px; 
             z-index: 2000; border: 1px solid var(--border-color); animation: slideDown 0.3s; 
@@ -302,8 +291,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
+        /* Scrollbar Halus */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
@@ -319,6 +308,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body>
+
+    <canvas id="leaves-canvas"></canvas>
 
     <header class="header">
         <div class="header-left">
@@ -349,6 +340,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </button>
         </div>
     </header>
+    
     <nav id="sidebar" class="sidebar">
         <div class="logo">
             <svg class="icon" style="color:var(--primary)" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -485,10 +477,87 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
     
     <script>
+        // ==========================================
+        // LOGIKA FALLING LEAVES (BACKGROUND)
+        // ==========================================
+        const canvas = document.getElementById('leaves-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const leavesCount = 60; 
+        const leaves = [];
+        const leafColors = ['#C19A6B', '#A47B5A', '#8B4513', '#D2B48C', '#6B4423'];
+
+        class Leaf {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * canvas.width; 
+                this.y = Math.random() * canvas.height * -1 - 20; 
+                this.size = Math.random() * 8 + 4; 
+                this.speed = Math.random() * 1.5 + 0.5; 
+                this.color = leafColors[Math.floor(Math.random() * leafColors.length)];
+                this.rotation = Math.random() * Math.PI * 2; 
+                this.rotationSpeed = Math.random() * 0.02 - 0.01; 
+                this.swing = Math.random() * 1.5; 
+                this.swingSpeed = Math.random() * 0.02;
+                this.swingOffset = Math.random() * Math.PI * 2;
+                this.opacity = Math.random() * 0.5 + 0.2; 
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.globalAlpha = this.opacity; 
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size);
+                ctx.bezierCurveTo(this.size/2, -this.size/2, this.size/2, this.size/2, 0, this.size);
+                ctx.bezierCurveTo(-this.size/2, this.size/2, -this.size/2, -this.size/2, 0, -this.size);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.y += this.speed; 
+                this.rotation += this.rotationSpeed; 
+                this.x += Math.sin(this.swingOffset) * this.swing; 
+                this.swingOffset += this.swingSpeed;
+                if (this.y > canvas.height + 20) {
+                    this.init();
+                }
+            }
+        }
+
+        for (let i = 0; i < leavesCount; i++) {
+            leaves.push(new Leaf());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            for (let i = 0; i < leaves.length; i++) {
+                leaves[i].update();
+                leaves[i].draw();
+            }
+            requestAnimationFrame(animate); 
+        }
+        animate();
+
+        // ==========================================
+        // LOGIKA KONEKSI & SIDEBAR
+        // ==========================================
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
         
-        // --- LOGIC KONEKSI SERVER (UPDATED UI) ---
         function checkServerConnection() {
             fetch('?api=check_connection')
                 .then(response => response.json())
@@ -517,9 +586,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         setInterval(checkServerConnection, 5000);
         checkServerConnection();
-        // ----------------------------------------------
 
-        // --- Sidebar Logic ---
         function toggleSidebar(){
             if(window.innerWidth >= 992){
                 sidebar.style.left = (sidebar.style.left === '0px' || sidebar.style.left === '') ? '-260px' : '0px';

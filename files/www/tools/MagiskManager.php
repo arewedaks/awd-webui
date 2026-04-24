@@ -118,68 +118,182 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'modules';
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Magisk Manager</title>
     <style>
+        /* --- CSS VARIABLES (TRANSPARENT GLASSMORPHISM) --- */
         :root {
-            --bg: #f8f9fa; --card: #ffffff; --text: #2d3748; --sub: #718096; --border: #e2e8f0;
-            --primary: #fb8c00; --primary-bg: #fff3e0;
-            --success: #2dce89; --success-bg: #e6fffa;
-            --warning: #fb6340; --warning-bg: #fff5f5;
-            --danger: #f5365c; --danger-bg: #fff5f5;
-            --radius: 12px; --shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-            --log-bg: #1e293b; --log-text: #f1f5f9; --log-head: #0f172a;
+            /* LIGHT MODE */
+            --card-bg: rgba(255, 248, 240, 0.15); /* Sangat transparan */
+            --blur: blur(5px);
+            --text-main: #3E2A1C;
+            --text-sub: #7A5C43;
+            --border: rgba(255, 255, 255, 0.5);
+            --border-dashed: rgba(122, 92, 67, 0.2);
+            
+            --inp-bg: rgba(62, 42, 28, 0.08); 
+            
+            --primary: #B87333; 
+            --primary-bg: rgba(184, 115, 51, 0.15);
+            
+            --danger: #ff3b30; 
+            --danger-bg: rgba(255, 59, 48, 0.15);
+            
+            --warning: #fb8c00; 
+            --warning-bg: rgba(251, 140, 0, 0.15);
+            
+            --success: #34c759; 
+            --success-bg: rgba(52, 199, 89, 0.15);
+            
+            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
+            --radius: 20px;
+            --inner-radius: 12px;
+            
+            /* Glass Console Logs */
+            --log-bg: rgba(30, 18, 10, 0.4); 
+            --log-text: #FDF5E6; 
+            --log-head: rgba(0, 0, 0, 0.2);
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --sub: #a0a0a0; --border: #2d2d2d;
-                --primary: #ff9800; --primary-bg: rgba(255,152,0,0.15);
-                --success: #68d391; --success-bg: rgba(104,211,145,0.15);
-                --warning: #ffcc80; --warning-bg: rgba(255,167,38,0.15);
-                --danger: #fc8181; --danger-bg: rgba(252,129,129,0.15);
-                --shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
-                --log-bg: #000000; --log-text: #ff9800; --log-head: #2d2d2d;
+                /* DARK MODE */
+                --card-bg: rgba(10, 5, 2, 0.2); /* Sangat transparan */
+                --blur: blur(5px);
+                --text-main: #FDF5E6;
+                --text-sub: #C0B2A2;
+                --border: rgba(255, 255, 255, 0.15);
+                --border-dashed: rgba(253, 245, 230, 0.15);
+                
+                --inp-bg: rgba(253, 245, 230, 0.08); 
+                
+                --primary: #C19A6B; 
+                --primary-bg: rgba(193, 154, 107, 0.2);
+                
+                --danger: #ff453a; 
+                --danger-bg: rgba(255, 69, 58, 0.2);
+                
+                --warning: #ff9800; 
+                --warning-bg: rgba(255, 152, 0, 0.2);
+                
+                --success: #32d74b; 
+                --success-bg: rgba(50, 215, 75, 0.2);
+                
+                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+                
+                --log-bg: rgba(0, 0, 0, 0.4); 
+                --log-text: #C19A6B; 
+                --log-head: rgba(255, 255, 255, 0.05);
             }
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; max-width: 900px; margin: 0 auto; padding-bottom: 80px; }
         
-        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; padding: 20px; }
-        .title { font-weight: 700; font-size: 1.1rem; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px; color: var(--text); }
-        .title-left { display: flex; align-items: center; gap: 8px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
+            background: transparent; /* TRANSPARAN TOTAL */
+            color: var(--text-main); 
+            padding: 16px; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding-bottom: 80px; 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* --- GLASSMORPHISM CARD --- */
+        .card { 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); 
+            -webkit-backdrop-filter: var(--blur);
+            border-radius: var(--radius); 
+            box-shadow: var(--shadow); 
+            border: 1px solid var(--border); 
+            overflow: hidden; 
+            margin-bottom: 16px; 
+            padding: 24px; 
+            position: relative;
+        }
+        .card::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: var(--radius); box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none;
+        }
 
-        .btn { border: none; border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.85rem; display: inline-flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; color: #fff; }
-        .btn-sm { padding: 5px 12px; font-size: 0.75rem; border-radius: 6px; }
-        .btn-p { background: var(--primary); color: #fff; }
-        .btn-d { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
-        .btn-w { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning); }
-        .btn-s { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
-        .icon { width: 20px; height: 20px; fill: currentColor; }
+        .title { font-weight: 700; font-size: 1.1rem; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed var(--border-dashed); padding-bottom: 12px; color: var(--text-main); position: relative; z-index: 2; }
+        .title-left { display: flex; align-items: center; gap: 10px; }
 
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; background: var(--card); padding: 5px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
-        .tab { flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-weight: 600; text-decoration: none; color: var(--sub); transition: 0.2s; }
-        .tab.active { background: var(--primary-bg); color: var(--primary); }
+        /* --- BUTTONS --- */
+        .btn { border: 1px solid transparent; border-radius: var(--inner-radius); padding: 10px 16px; font-weight: 600; cursor: pointer; transition: 0.2s ease; font-size: 0.85rem; display: inline-flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+        .btn-sm { padding: 6px 14px; font-size: 0.75rem; border-radius: 8px; }
+        
+        .btn-p { background: rgba(184, 115, 51, 0.85); color: #fff; border: 1px solid var(--border); box-shadow: inset 0 1px 1px rgba(255,255,255,0.2); }
+        .btn-p:hover { background: rgba(184, 115, 51, 1); transform: translateY(-2px); }
+        
+        .btn-d { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(255, 59, 48, 0.3); }
+        .btn-d:hover { background: rgba(255, 59, 48, 0.2); transform: translateY(-2px); }
+        
+        .btn-w { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(251, 140, 0, 0.3); }
+        .btn-w:hover { background: rgba(251, 140, 0, 0.2); transform: translateY(-2px); }
+        
+        .btn-s { background: var(--success-bg); color: var(--success); border: 1px solid rgba(52, 199, 89, 0.3); }
+        .btn-s:hover { background: rgba(52, 199, 89, 0.2); transform: translateY(-2px); }
+        
+        .icon { width: 22px; height: 22px; fill: currentColor; }
 
-        .mod-item { border-bottom: 1px solid var(--border); padding: 16px 0; }
+        /* --- TABS --- */
+        .tabs { 
+            display: flex; gap: 10px; margin-bottom: 20px; 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            padding: 6px; 
+            border-radius: var(--radius); 
+            border: 1px solid var(--border); 
+            box-shadow: var(--shadow); 
+        }
+        .tab { flex: 1; text-align: center; padding: 12px; border-radius: 14px; font-weight: 600; text-decoration: none; color: var(--text-sub); transition: 0.2s ease; border: 1px solid transparent; }
+        .tab.active { background: var(--primary-bg); color: var(--primary); border-color: rgba(184, 115, 51, 0.3); box-shadow: inset 0 1px 2px rgba(255,255,255,0.1); }
+
+        /* --- MODULE LIST --- */
+        .mod-item { border-bottom: 1px dashed var(--border-dashed); padding: 20px 0; position: relative; z-index: 2; transition: 0.2s ease; }
+        .mod-item:hover { transform: translateX(4px); }
         .mod-item:last-child { border-bottom: none; padding-bottom: 0; }
-        .mod-head { display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center; }
-        .mod-name { font-weight: 700; font-size: 1rem; color: var(--text); }
-        .mod-ver { font-size: 0.75rem; color: var(--sub); background: var(--bg); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
-        .mod-desc { font-size: 0.85rem; color: var(--sub); margin-bottom: 10px; line-height: 1.4; display: block; }
-        .mod-auth { font-size: 0.75rem; color: var(--primary); margin-bottom: 8px; display: block; font-weight: 600; }
-        .mod-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .mod-head { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; }
+        .mod-name { font-weight: 700; font-size: 1.05rem; color: var(--text-main); }
+        .mod-ver { font-size: 0.75rem; color: var(--text-sub); background: var(--inp-bg); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); font-family: 'SF Mono', monospace; }
+        .mod-desc { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 12px; line-height: 1.5; display: block; }
+        .mod-auth { font-size: 0.75rem; color: var(--primary); margin-bottom: 10px; display: block; font-weight: 600; letter-spacing: 0.5px; }
+        .mod-acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
-        .upload-box { border: 2px dashed var(--border); border-radius: 12px; padding: 30px 20px; cursor: pointer; transition: 0.2s; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 140px; }
-        .upload-box:hover, .upload-box.drag-over { border-color: var(--primary); background: var(--primary-bg); transform: scale(1.01); }
+        /* --- UPLOAD BOX --- */
+        .upload-box { 
+            border: 2px dashed var(--border); 
+            border-radius: var(--radius); 
+            padding: 40px 20px; 
+            cursor: pointer; 
+            transition: 0.2s ease; 
+            background: var(--inp-bg); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 160px; 
+            position: relative; z-index: 2;
+        }
+        .upload-box:hover, .upload-box.drag-over { border-color: var(--primary); background: var(--primary-bg); transform: scale(1.02); }
         input[type="file"] { display: none; }
         
-        .progress-area { display: none; margin-top: 20px; }
-        .progress-track { width: 100%; background: var(--border); height: 8px; border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.1s linear; }
-        .progress-text { font-size: 0.8rem; color: var(--sub); text-align: center; margin-top: 8px; font-weight: 600; display: flex; justify-content: space-between; }
+        /* --- PROGRESS BAR --- */
+        .progress-area { display: none; margin-top: 25px; position: relative; z-index: 2; }
+        .progress-track { width: 100%; background: var(--inp-bg); height: 10px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.1s linear; box-shadow: inset 0 1px 2px rgba(255,255,255,0.3); }
+        .progress-text { font-size: 0.85rem; color: var(--text-main); text-align: center; margin-top: 10px; font-weight: 600; display: flex; justify-content: space-between; }
 
-        .console-wrap { display: none; margin-top: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
-        .console-head { background: var(--log-head); padding: 8px 12px; color: #aaa; font-size: 0.75rem; font-weight: bold; border-bottom: 1px solid var(--border); }
-        #logFrame { width:100%; height:250px; border:none; background: var(--log-bg); }
+        /* --- CONSOLE LOG GLASS --- */
+        .console-wrap { display: none; margin-top: 20px; border-radius: var(--inner-radius); border: 1px solid var(--border); overflow: hidden; position: relative; z-index: 2; box-shadow: var(--shadow); }
+        .console-head { background: var(--log-head); padding: 10px 16px; color: var(--text-sub); font-size: 0.75rem; font-weight: 700; border-bottom: 1px solid var(--border); letter-spacing: 1px; text-transform: uppercase; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+        #logFrame { width:100%; height:300px; border:none; background: var(--log-bg); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
         
-        .log-box { background-color: var(--log-bg); color: var(--log-text); border: 1px solid var(--border); border-radius: 8px; height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; padding: 10px; white-space: pre-wrap; }
+        .log-box { 
+            background-color: var(--log-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            color: var(--log-text); 
+            border: 1px solid var(--border); 
+            border-radius: var(--inner-radius); 
+            height: 500px; overflow-y: auto; 
+            font-family: 'SF Mono', monospace; font-size: 0.85rem; padding: 15px; white-space: pre-wrap; 
+            position: relative; z-index: 2; line-height: 1.5;
+        }
         .log-err { color: #ff6b6b; } .log-warn { color: #ffd93d; }
     </style>
 </head>
@@ -204,11 +318,11 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'modules';
             
             <label class="upload-box" id="dropBox">
                 <input type="file" id="zipFile" accept=".zip" onchange="startInstall(this.files[0])">
-                <div style="color: var(--primary); margin-bottom: 8px;">
-                    <svg class="icon" style="width:40px; height:40px;" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                <div style="color: var(--primary); margin-bottom: 12px;">
+                    <svg class="icon" style="width:48px; height:48px;" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
                 </div>
-                <div style="font-weight: 600; font-size: 1rem; color:var(--text)" id="dropText">Tap or Drag .zip Here</div>
-                <div style="color: var(--sub); font-size: 0.85rem; margin-top: 4px;">Install Magisk Module</div>
+                <div style="font-weight: 700; font-size: 1.1rem; color:var(--text-main)" id="dropText">Tap or Drag .zip Here</div>
+                <div style="color: var(--text-sub); font-size: 0.85rem; margin-top: 6px; font-weight: 500;">Install Magisk Module</div>
             </label>
 
             <div id="progressArea" class="progress-area">
@@ -237,7 +351,7 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'modules';
             <?php 
             $modules = getModules();
             if (empty($modules)): ?>
-                <div style="text-align:center; padding:20px; color:var(--sub);">No modules found.</div>
+                <div style="text-align:center; padding:30px; color:var(--text-sub); font-weight: 500; border: 1px dashed var(--border-dashed); border-radius: var(--radius); background: var(--inp-bg); position: relative; z-index: 2;">No modules found.</div>
             <?php else: 
                 foreach ($modules as $mod): ?>
                 <div class="mod-item" style="opacity: <?= ($mod['enabled'] && !($mod['remove'] ?? false)) ? '1' : '0.6' ?>">
@@ -275,12 +389,12 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'modules';
                     if(!doc.body.dataset.styled) {
                         let style = doc.createElement('style');
                         style.textContent = `
-                            body { font-family: monospace; font-size: 12px; margin: 10px; white-space: pre-wrap; }
+                            body { font-family: 'SF Mono', monospace; font-size: 13px; margin: 15px; white-space: pre-wrap; line-height: 1.5; }
                             @media (prefers-color-scheme: dark) {
-                                body { background-color: #000000; color: #ff9800; }
+                                body { background-color: transparent; color: #C19A6B; }
                             }
                             @media (prefers-color-scheme: light) {
-                                body { background-color: #1e293b; color: #f1f5f9; }
+                                body { background-color: transparent; color: #FDF5E6; }
                             }
                         `;
                         doc.head.appendChild(style);
@@ -353,8 +467,12 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'modules';
     <?php elseif ($activeTab == 'logs'): ?>
         <div class="card">
             <div class="title" style="justify-content:space-between">
-                <span>Magisk Logs</span>
-                <a href="?tab=logs" class="btn btn-sm btn-p">Refresh</a>
+                <div class="title-left">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Magisk Logs
+                </div>
+                <a href="?tab=logs" class="btn btn-sm btn-p">
+                    <svg class="icon" style="width:16px;height:16px" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> Refresh
+                </a>
             </div>
             <div class="log-box">
                 <?php

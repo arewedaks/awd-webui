@@ -8,77 +8,109 @@ $host = $x[0];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#fb8c00">
     <title>File Manager</title>
     <style>
+        /* --- CSS VARIABLES (TRANSPARENT GLASSMORPHISM) --- */
         :root {
-            --bg-body: #f8f9fa;
-            --bg-nav: #ffffff;
-            --text-main: #2d3748;
-            --text-muted: #718096;
-            --primary: #fb8c00;
-            --primary-bg: #fff3e0;
-            --border: #e2e8f0;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            /* LIGHT MODE */
+            --card-bg: rgba(255, 248, 240, 0.15); /* Sangat transparan */
+            --blur: blur(5px);
+            --text-main: #3E2A1C;
+            --text-muted: #7A5C43;
+            --border: rgba(255, 255, 255, 0.5);
+            --primary: #B87333;
+            
+            /* Background area Tab Container */
+            --tab-cont-bg: rgba(62, 42, 28, 0.08);
+            
+            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg-body: #121212;
-                --bg-nav: #1e1e1e;
-                --text-main: #e0e0e0;
-                --text-muted: #a0a0a0;
-                --primary: #ff9800;
-                --primary-bg: #3e2723;
-                --border: #2d2d2d;
-                --shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+                /* DARK MODE */
+                --card-bg: rgba(10, 5, 2, 0.2); /* Sangat transparan */
+                --blur: blur(5px);
+                --text-main: #FDF5E6;
+                --text-muted: #C0B2A2;
+                --border: rgba(255, 255, 255, 0.15);
+                --primary: #C19A6B;
+                
+                --tab-cont-bg: rgba(253, 245, 230, 0.08);
+                
+                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; outline: none; }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-body);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            background: transparent; /* TRANSPARAN TOTAL */
             color: var(--text-main);
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
+
+        /* --- GLASSMORPHISM NAVBAR --- */
         .nav-bar {
-            background-color: var(--bg-nav);
-            padding: 12px 16px;
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 14px 16px;
             box-shadow: var(--shadow);
             z-index: 10;
             display: flex;
             justify-content: center;
             border-bottom: 1px solid var(--border);
+            position: relative;
         }
+        /* Highlight atas efek kaca pada navbar */
+        .nav-bar::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none;
+        }
+
+        /* --- GLASSMORPHISM TABS --- */
         .tabs {
-            background-color: var(--bg-body);
-            padding: 4px;
-            border-radius: 12px;
+            background: var(--tab-cont-bg);
+            padding: 6px;
+            border-radius: 18px; /* Lebih membulat */
             display: flex;
-            gap: 5px;
+            gap: 8px;
             width: 100%;
-            max-width: 360px;
+            max-width: 400px; /* Sedikit dilebarkan */
             border: 1px solid var(--border);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            position: relative;
+            z-index: 2;
         }
         .tab {
             flex: 1;
-            padding: 8px;
+            padding: 10px;
             text-align: center;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.9rem;
             font-weight: 600;
             color: var(--text-muted);
-            border-radius: 8px;
-            transition: 0.2s;
+            border-radius: 14px;
+            transition: 0.3s ease;
             user-select: none;
+            border: 1px solid transparent;
+        }
+        .tab:hover {
+            color: var(--primary);
         }
         .tab.active {
-            background-color: var(--bg-nav);
+            background: var(--card-bg);
             color: var(--primary);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-color: var(--border);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1), inset 0 1px 1px rgba(255,255,255,0.2);
         }
+
+        /* --- CONTAINER & IFRAME --- */
         .container {
             flex-grow: 1;
             position: relative;
@@ -90,12 +122,17 @@ $host = $x[0];
             width: 100%;
             height: 100%;
         }
-        .view.active { display: block; }
+        .view.active { 
+            display: block; 
+            animation: fadeIn 0.4s ease; 
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
         iframe {
             width: 100%;
             height: 100%;
             border: none;
-            background-color: var(--bg-body);
+            background-color: transparent; /* TRANSPARAN TOTAL AGAR DAUN TERLIHAT DI DALAM IFRAME */
         }
     </style>
 </head>

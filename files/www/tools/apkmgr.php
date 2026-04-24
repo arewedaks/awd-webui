@@ -143,75 +143,195 @@ if ($activeTab == 'manage') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>APK Manager</title>
     <style>
+        /* --- CSS VARIABLES (TRANSPARENT GLASSMORPHISM) --- */
         :root {
-            --bg: #f8f9fa; --card: #ffffff; --text: #2d3748; --sub: #718096; --border: #e2e8f0;
-            --primary: #fb8c00; --primary-bg: #fff3e0;
-            --danger: #f5365c; --danger-bg: #fff5f5;
-            --success: #2dce89; --success-bg: #e6fffa;
-            --sys-color: #fb6340; --sys-bg: #fff0eb;
-            --usr-color: #5e72e4; --usr-bg: #eaecfb;
-            --radius: 12px; --shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            /* LIGHT MODE */
+            --card-bg: rgba(255, 248, 240, 0.15); /* Sangat transparan */
+            --blur: blur(5px);
+            --text-main: #3E2A1C;
+            --text-sub: #7A5C43;
+            --border: rgba(255, 255, 255, 0.5);
+            --border-dashed: rgba(122, 92, 67, 0.2);
+            
+            --inp-bg: rgba(62, 42, 28, 0.08); 
+            
+            --primary: #B87333; 
+            --primary-bg: rgba(184, 115, 51, 0.15);
+            
+            --danger: #ff3b30; 
+            --danger-bg: rgba(255, 59, 48, 0.15);
+            
+            --success: #34c759; 
+            --success-bg: rgba(52, 199, 89, 0.15);
+            
+            /* Warna Tag System & User disesuaikan dengan tone coklat */
+            --sys-color: #8B4513; 
+            --sys-bg: rgba(139, 69, 19, 0.15);
+            --usr-color: #D2691E; 
+            --usr-bg: rgba(210, 105, 30, 0.15);
+            
+            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
+            --radius: 20px;
+            --inner-radius: 12px;
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --sub: #a0a0a0; --border: #2d2d2d;
-                --primary: #ff9800; --primary-bg: rgba(255,152,0,0.15);
-                --danger: #fc8181; --danger-bg: rgba(252,129,129,0.15);
-                --success: #68d391; --success-bg: rgba(104,211,145,0.15);
-                --sys-color: #ffcc80; --sys-bg: rgba(255,204,128,0.15);
-                --usr-color: #9fa8da; --usr-bg: rgba(159,168,218,0.15);
-                --shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+                /* DARK MODE */
+                --card-bg: rgba(10, 5, 2, 0.2); /* Sangat transparan */
+                --blur: blur(5px);
+                --text-main: #FDF5E6;
+                --text-sub: #C0B2A2;
+                --border: rgba(255, 255, 255, 0.15);
+                --border-dashed: rgba(253, 245, 230, 0.15);
+                
+                --inp-bg: rgba(253, 245, 230, 0.08); 
+                
+                --primary: #C19A6B; 
+                --primary-bg: rgba(193, 154, 107, 0.2);
+                
+                --danger: #ff453a; 
+                --danger-bg: rgba(255, 69, 58, 0.2);
+                
+                --success: #32d74b; 
+                --success-bg: rgba(50, 215, 75, 0.2);
+                
+                /* Warna Tag System & User disesuaikan dengan tone coklat gelap */
+                --sys-color: #DEB887; 
+                --sys-bg: rgba(222, 184, 135, 0.2);
+                --usr-color: #F4A460; 
+                --usr-bg: rgba(244, 164, 96, 0.2);
+                
+                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; max-width: 900px; margin: 0 auto; padding-bottom: 80px; }
         
-        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; margin-bottom: 15px; }
-        .btn { border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.9rem; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
-        .btn-p { background: var(--primary); color: #fff; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn-d { background: var(--danger-bg); color: var(--danger); }
-        .btn-s { background: var(--bg); border: 1px solid var(--border); color: var(--sub); padding: 8px 12px; font-size: 0.8rem;}
-        .icon { width: 18px; height: 18px; fill: currentColor; }
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
+            background: transparent; /* TRANSPARAN TOTAL */
+            color: var(--text-main); 
+            padding: 16px; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding-bottom: 80px; 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* --- GLASSMORPHISM CARD & ELEMENTS --- */
+        .card { 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); 
+            -webkit-backdrop-filter: var(--blur);
+            border-radius: var(--radius); 
+            box-shadow: var(--shadow); 
+            border: 1px solid var(--border); 
+            overflow: hidden; 
+            margin-bottom: 15px; 
+            position: relative;
+        }
+        .card::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: var(--radius); box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none;
+        }
 
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; background: var(--card); padding: 5px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
-        .tab { flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-weight: 600; text-decoration: none; color: var(--sub); transition: 0.2s; }
-        .tab.active { background: var(--primary-bg); color: var(--primary); }
+        .btn { border: 1px solid transparent; border-radius: var(--inner-radius); padding: 12px 18px; font-weight: 600; cursor: pointer; transition: 0.2s ease; font-size: 0.95rem; display: inline-flex; justify-content: center; align-items: center; gap: 8px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+        .btn-p { background: rgba(184, 115, 51, 0.85); color: #fff; width: 100%; border: 1px solid var(--border); box-shadow: inset 0 1px 1px rgba(255,255,255,0.2); }
+        .btn-p:hover { background: rgba(184, 115, 51, 1); transform: translateY(-2px); }
+        
+        .btn-d { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(255, 59, 48, 0.3); }
+        .btn-d:hover { background: rgba(255, 59, 48, 0.25); transform: translateY(-2px); }
+        
+        .btn-s { background: transparent; border: none; color: var(--text-main); padding: 8px 12px; font-size: 0.8rem; }
+        .btn-s:hover { transform: translateY(-2px); }
+        
+        .icon { width: 20px; height: 20px; fill: currentColor; }
 
-        .alert { padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem; font-weight: 600; display: flex; gap: 10px; align-items: center; border: 1px solid transparent; }
-        .alert.success { background: var(--success-bg); color: var(--success); border-color: var(--success); }
-        .alert.error { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+        /* --- TABS --- */
+        .tabs { 
+            display: flex; gap: 10px; margin-bottom: 20px; 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            padding: 6px; 
+            border-radius: var(--radius); 
+            border: 1px solid var(--border); 
+            box-shadow: var(--shadow); 
+        }
+        .tab { flex: 1; text-align: center; padding: 12px; border-radius: 14px; font-weight: 600; text-decoration: none; color: var(--text-sub); transition: 0.2s ease; border: 1px solid transparent; }
+        .tab.active { background: var(--primary-bg); color: var(--primary); border-color: rgba(184, 115, 51, 0.3); box-shadow: inset 0 1px 2px rgba(255,255,255,0.1); }
 
-        .upload-box { border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; text-align: center; background: var(--bg); cursor: pointer; position: relative; transition: 0.2s; }
-        .upload-box:hover, .upload-box.drag-over { border-color: var(--primary); background: var(--primary-bg); transform: scale(1.01); }
+        /* --- ALERTS --- */
+        .alert { padding: 14px 18px; border-radius: var(--inner-radius); margin-bottom: 16px; font-size: 0.9rem; font-weight: 600; display: flex; gap: 10px; align-items: center; border: 1px solid transparent; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .alert.success { background: var(--success-bg); color: var(--success); border-color: rgba(52, 199, 89, 0.4); }
+        .alert.error { background: var(--danger-bg); color: var(--danger); border-color: rgba(255, 59, 48, 0.4); }
+
+        /* --- INSTALL BOX --- */
+        .upload-box { 
+            border: 2px dashed var(--border); 
+            border-radius: var(--radius); 
+            padding: 50px 20px; 
+            text-align: center; 
+            background: var(--inp-bg); 
+            cursor: pointer; 
+            position: relative; 
+            transition: 0.2s ease; 
+        }
+        .upload-box:hover, .upload-box.drag-over { border-color: var(--primary); background: var(--primary-bg); transform: scale(1.02); }
         input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .spin { width: 18px; height: 18px; border: 2px solid #fff; border-bottom-color: transparent; border-radius: 50%; display: none; animation: s 1s infinite; }
         @keyframes s { to { transform: rotate(360deg); } }
 
-        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .stat { background: var(--card); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid var(--border); box-shadow: var(--shadow); position: relative;}
-        .s-val { font-size: 1.4rem; font-weight: 700; display: block; line-height: 1.2; }
-        .s-lbl { font-size: 0.75rem; text-transform: uppercase; color: var(--sub); font-weight: 600; }
+        /* --- STATS --- */
+        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat { 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            padding: 16px 12px; 
+            border-radius: var(--radius); 
+            text-align: center; 
+            border: 1px solid var(--border); 
+            box-shadow: var(--shadow); 
+            position: relative;
+        }
+        .s-val { font-size: 1.6rem; font-weight: 700; display: block; line-height: 1.2; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .s-lbl { font-size: 0.8rem; text-transform: uppercase; color: var(--text-sub); font-weight: 600; letter-spacing: 0.5px; }
         
-        .search-row { display: flex; gap: 8px; margin-bottom: 15px; align-items: center;}
-        .inp { flex: 1; padding: 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.95rem; box-shadow: var(--shadow); }
-        .inp:focus { border-color: var(--primary); }
+        /* --- SEARCH & CHIPS --- */
+        .search-row { display: flex; gap: 10px; margin-bottom: 20px; align-items: center;}
+        .inp { 
+            flex: 1; padding: 14px 18px; border-radius: var(--radius); 
+            border: 1px solid var(--border); 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            color: var(--text-main); font-size: 0.95rem; font-weight: 500;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); transition: 0.2s;
+        }
+        .inp:focus { border-color: rgba(255, 255, 255, 0.8); background: rgba(255, 255, 255, 0.1); }
         
-        .chips { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
-        .chip { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; background: var(--card); border: 1px solid var(--border); color: var(--sub); cursor: pointer; white-space: nowrap; font-weight: 600; text-decoration: none; transition: 0.2s; }
-        .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .chips { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .chip { 
+            padding: 8px 18px; border-radius: 20px; font-size: 0.85rem; 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+            border: 1px solid var(--border); 
+            color: var(--text-main); cursor: pointer; white-space: nowrap; font-weight: 600; text-decoration: none; transition: 0.2s ease; 
+        }
+        .chip:hover { border-color: var(--primary); }
+        .chip.active { background: var(--primary); color: #fff; border-color: transparent; box-shadow: 0 4px 10px rgba(184, 115, 51, 0.3); }
 
-        .list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        /* --- APP LIST --- */
+        .list { display: grid; grid-template-columns: 1fr; gap: 15px; }
         @media (min-width: 600px) { .list { grid-template-columns: 1fr 1fr; } }
         
-        .app { padding: 16px; position: relative; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
-        .app:hover { transform: translateY(-2px); }
-        .app-h { margin-bottom: 12px; }
-        .app-n { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; word-break: break-all; color: var(--text); }
-        .app-p { color: var(--sub); font-size: 0.75rem; font-family: monospace; word-break: break-all; }
-        .tags { display: flex; gap: 6px; margin-top: 8px; }
-        .tag { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .t-sys { background: var(--sys-bg); color: var(--sys-color); }
-        .t-usr { background: var(--usr-bg); color: var(--usr-color); }
+        .app { padding: 20px; position: relative; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease; }
+        .app:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.7); }
+        .app-h { margin-bottom: 16px; z-index: 2; position: relative; }
+        .app-n { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; word-break: break-all; color: var(--text-main); }
+        .app-p { color: var(--text-sub); font-size: 0.8rem; font-family: 'SF Mono', monospace; word-break: break-all; }
+        .tags { display: flex; gap: 8px; margin-top: 12px; }
+        .tag { font-size: 0.7rem; padding: 4px 10px; border-radius: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid transparent; }
+        .t-sys { background: var(--sys-bg); color: var(--sys-color); border-color: rgba(139, 69, 19, 0.2); }
+        .t-usr { background: var(--usr-bg); color: var(--usr-color); border-color: rgba(210, 105, 30, 0.2); }
     </style>
 </head>
 <body>
@@ -229,17 +349,17 @@ if ($activeTab == 'manage') {
     <?php endif; ?>
 
     <?php if ($activeTab == 'install'): ?>
-    <div class="card" style="padding: 25px;">
-        <h2 style="margin-bottom: 20px; color:var(--text); text-align:center;">Install APK</h2>
-        <form method="post" enctype="multipart/form-data" id="fInst">
+    <div class="card" style="padding: 30px;">
+        <h2 style="margin-bottom: 25px; color:var(--text-main); text-align:center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Install APK</h2>
+        <form method="post" enctype="multipart/form-data" id="fInst" style="position: relative; z-index: 2;">
             <div class="upload-box" id="dropBox">
                 <input type="file" name="apk_file" id="fApk" accept=".apk" required>
-                <div style="margin-bottom: 10px;">
-                    <svg class="icon" style="width:40px; height:40px; color: var(--primary);" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                <div style="margin-bottom: 15px;">
+                    <svg class="icon" style="width:48px; height:48px; color: var(--primary);" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
                 </div>
-                <div id="fInfo" style="font-size: 0.9rem; color: var(--sub); font-weight:500;">Tap to select or Drag & Drop APK</div>
+                <div id="fInfo" style="font-size: 0.95rem; color: var(--text-main); font-weight:600;">Tap to select or Drag & Drop APK</div>
             </div>
-            <button type="submit" class="btn btn-p" id="bSub" disabled style="margin-top: 20px;">
+            <button type="submit" class="btn btn-p" id="bSub" disabled style="margin-top: 25px; padding: 16px;">
                 <span class="spin" id="spin"></span>
                 <span id="bTxt">Install App</span>
             </button>
@@ -281,16 +401,16 @@ if ($activeTab == 'manage') {
         <div class="stat"><span class="s-val" style="color: var(--primary)"><?= $stats['total'] ?></span><span class="s-lbl">Total</span></div>
         <div class="stat"><span class="s-val" style="color: var(--usr-color)"><?= $stats['user'] ?></span><span class="s-lbl">User</span></div>
         <div class="stat">
-            <a href="?tab=manage&refresh=1" class="btn btn-s" style="width:100%; height:100%; border:none; display:flex; flex-direction:column; background:transparent;">
-                <svg class="icon" style="width:24px;height:24px; color:var(--success)" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                <span class="s-lbl" style="margin-top:4px; color:var(--text)">REFRESH DATA</span>
+            <a href="?tab=manage&refresh=1" class="btn btn-s" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <svg class="icon" style="width:28px;height:28px; color:var(--success); margin-bottom: 4px;" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                <span class="s-lbl" style="color:var(--text-main);">REFRESH</span>
             </a>
         </div>
     </div>
 
     <div class="search-row">
         <input type="text" id="sInp" class="inp" placeholder="Search app name or package..." value="<?= htmlspecialchars($search) ?>">
-        <button onclick="doS()" class="btn" style="background:var(--card); border:1px solid var(--border); color:var(--text); width:auto; padding:12px;">
+        <button onclick="doS()" class="btn" style="background:var(--card-bg); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); border:1px solid var(--border); color:var(--text-main); padding:14px 18px;">
             <svg class="icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
         </button>
     </div>
@@ -303,7 +423,9 @@ if ($activeTab == 'manage') {
 
     <div class="list">
         <?php if (empty($apps)): ?>
-            <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--sub);">No apps found. Try clicking <b>Refresh Data</b>.</div>
+            <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: var(--text-sub); font-weight: 500; border: 1px dashed var(--border-dashed); border-radius: var(--radius); background: var(--card-bg); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);">
+                No apps found. Try clicking <b style="color: var(--text-main)">Refresh Data</b>.
+            </div>
         <?php else: ?>
             <?php foreach ($apps as $app): ?>
             <div class="card app">
@@ -314,7 +436,7 @@ if ($activeTab == 'manage') {
                         <span class="tag <?= $app['type'] == 'system' ? 't-sys' : 't-usr' ?>"><?= ucfirst($app['type']) ?></span>
                     </div>
                 </div>
-                <button onclick="uninst('<?= $app['package'] ?>', '<?= htmlspecialchars(addslashes($app['name'])) ?>')" class="btn btn-d" style="margin-top: auto;">
+                <button onclick="uninst('<?= $app['package'] ?>', '<?= htmlspecialchars(addslashes($app['name'])) ?>')" class="btn btn-d" style="margin-top: auto; position: relative; z-index: 2;">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> Uninstall
                 </button>
             </div>

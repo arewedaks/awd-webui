@@ -1,0 +1,140 @@
+[23:34:33] --- STARTING SCRIPT ---
+[23:34:33] CRITICAL: No active interface found!
+[23:34:38] --- STARTING SCRIPT ---
+[23:34:38] CRITICAL: No active interface found!
+[23:39:15] --- STARTING SMART DETECTION ---
+[23:39:15] Candidates found:
+    inet 10.88.93.128/24 brd 10.88.93.255 scope global ncm0
+[23:39:15] TARGET INTERFACE: ncm0
+[23:39:15] Resetting TC...
+[23:39:15] TC Reset OK.
+[23:39:21] --- STARTING SMART DETECTION ---
+[23:39:21] Candidates found:
+    inet 10.88.93.128/24 brd 10.88.93.255 scope global ncm0
+[23:39:21] TARGET INTERFACE: ncm0
+--- REFRESH SESSION ---
+[23:39:21] Resetting TC...
+[23:39:21] Init Global: D=5mbit U=2mbit
+[23:39:21] ERROR: tc qdisc add dev ncm0 ingress -> RTNETLINK answers: File exists
+[23:39:21] ERROR: tc filter add dev ncm0 parent ffff: protocol all prio 50 u32 match u32 0 0 police rate 2mbit burst 20k drop flowid :1 -> What is ":1"?
+Usage: ... u32 [ match SELECTOR ... ] [ link HTID ] [ classid CLASSID ]
+               [ action ACTION_SPEC ] [ offset OFFSET_SPEC ]
+               [ ht HTID ] [ hashkey HASHKEY_SPEC ]
+               [ sample SAMPLE ] [skip_hw | skip_sw]
+or         u32 divisor DIVISOR
+
+Where: SELECTOR := SAMPLE SAMPLE ...
+       SAMPLE := { ip | ip6 | udp | tcp | icmp | u{32|16|8} | mark }
+                 SAMPLE_ARGS [ divisor DIVISOR ]
+       FILTERID := X:Y:Z
+
+NOTE: CLASSID is parsed at hexadecimal input.
+[23:42:59] --- STARTING SMART DETECTION ---
+[23:42:59] Candidates found:
+    inet 10.38.2.141/8 scope global ccmni2
+    inet 10.88.93.128/24 brd 10.88.93.255 scope global ncm0
+[23:42:59] TARGET INTERFACE: ncm0
+[23:42:59] Resetting TC...
+[23:42:59] TC Reset OK.
+[23:43:07] --- STARTING SMART DETECTION ---
+[23:43:07] Candidates found:
+    inet 10.38.2.141/8 scope global ccmni2
+    inet 10.88.93.128/24 brd 10.88.93.255 scope global ncm0
+[23:43:07] TARGET INTERFACE: ncm0
+--- REFRESH SESSION ---
+[23:43:07] Resetting TC...
+[23:43:07] Init Global: D=5mbit U=2mbit
+[23:43:07] ERROR: tc qdisc add dev ncm0 ingress -> RTNETLINK answers: File exists
+[23:43:07] ERROR: tc filter add dev ncm0 parent ffff: protocol all prio 50 u32 match u32 0 0 police rate 2mbit burst 20k drop -> RTNETLINK answers: Invalid argument
+We have an error talking to the kernel
+[23:46:01] --- STARTING IFB METHOD ---
+[23:46:01] TARGET: ncm0
+[23:46:01] Resetting Rules...
+[23:46:01] TC Reset OK.
+[23:46:06] --- STARTING IFB METHOD ---
+[23:46:06] TARGET: ncm0
+--- IFB SESSION ---
+[23:46:06] Resetting Rules...
+[23:46:06] Init Global: D=5mbit U=2mbit
+[23:46:06] ERROR: tc qdisc add dev ncm0 handle ffff: ingress -> RTNETLINK answers: File exists
+[23:46:06] ERROR: tc filter add dev ncm0 parent ffff: protocol all u32 match u32 0 0 action mirred egress redirect dev ifb0 -> RTNETLINK answers: Invalid argument
+We have an error talking to the kernel
+[23:50:32] --- STARTING DUAL INTERFACE SETUP ---
+[23:50:32] LAN (Download): ncm0
+[23:50:32] WAN (Upload)  : ccmni2
+[23:50:32] Resetting Rules...
+[23:50:32] Reset DONE.
+[23:50:39] --- STARTING DUAL INTERFACE SETUP ---
+[23:50:40] LAN (Download): ncm0
+[23:50:40] WAN (Upload)  : ccmni2
+--- NEW SESSION ---
+[23:50:40] Resetting Rules...
+[23:50:40] Init Global: D=5mbit U=2mbit
+[23:51:45] --- STARTING DUAL INTERFACE SETUP ---
+[23:51:45] LAN (Download): ncm0
+[23:51:45] WAN (Upload)  : ccmni2
+[23:51:45] Resetting Rules...
+[23:51:45] Reset DONE.
+[23:51:54] --- STARTING DUAL INTERFACE SETUP ---
+[23:51:54] LAN (Download): ncm0
+[23:51:54] WAN (Upload)  : ccmni2
+--- NEW SESSION ---
+[23:51:54] Resetting Rules...
+[23:51:54] Init Global: D=0mbit U=0mbit
+[23:51:54] TC_ERR: tc class add dev ncm0 parent 1:1 classid 1:9999 htb rate 0mbit ceil 0mbit prio 50 -> "rate" is required.
+[23:51:54] TC_ERR: tc class add dev ccmni2 parent 1:1 classid 1:9999 htb rate 0mbit ceil 0mbit prio 50 -> "rate" is required.
+[23:51:54] User 10.88.93.108 -> ID:0x0e89
+[23:55:31] LAN: ncm0 | WAN: ccmni2
+[23:55:31] Resetting Rules...
+[23:55:31] Reset DONE.
+[23:55:39] LAN: ncm0 | WAN: ccmni2
+--- NEW SESSION ---
+[23:55:39] Resetting Rules...
+[23:55:39] Init Global: D=2000mbit U=2000mbit
+[23:55:39] User 10.88.93.108 -> ID:0x0e89 D:10mbit U:2mbit
+[00:00:28] LAN: ncm0 | WAN: ccmni2
+[00:00:28] Resetting...
+[00:00:28] Reset DONE.
+[00:00:39] LAN: ncm0 | WAN: ccmni2
+--- NEW SESSION ---
+[00:00:39] Resetting...
+[00:00:39] Init Global: D=2000mbit U=2000mbit
+[00:00:40] User 10.88.93.108: D:10mbit U:2mbit ID:3721
+[00:01:37] LAN: ncm0 | WAN: ccmni2
+[00:01:37] Resetting...
+[00:01:37] Reset DONE.
+[00:01:43] LAN: ncm0 | WAN: ccmni2
+--- NEW SESSION ---
+[00:01:43] Resetting...
+[00:01:43] Init Global: D=5mbit U=2mbit
+[00:03:25] LAN: ncm0 | WAN: ccmni2
+[00:03:25] Resetting...
+[00:03:25] Reset DONE.
+[00:03:34] LAN: ncm0 | WAN: ccmni2
+--- NEW SESSION ---
+[00:03:34] Resetting...
+[00:03:34] Init Global: D=2000mbit U=2000mbit
+[00:03:35] User 10.88.93.108: D:8mbit U:3mbit ID:3721
+[00:05:11] DETECTED LAN: ncm0 (Download Target)
+[00:05:11] DETECTED WAN: table (Upload Target)
+--- NEW SESSION (FWD) ---
+[00:05:11] Resetting Rules...
+[00:05:11] Init Global: D=2000mbit U=2000mbit
+[00:05:11] TC_ERR: tc qdisc add dev table root handle 1: htb default 9999 r2q 1 -> Cannot find device "table"
+[00:05:11] TC_ERR: tc class add dev table parent 1: classid 1:1 htb rate 2000mbit ceil 2000mbit -> Cannot find device "table"
+[00:05:11] TC_ERR: tc class add dev table parent 1:1 classid 1:9999 htb rate 2000mbit ceil 2000mbit prio 50 -> Cannot find device "table"
+[00:05:15] DETECTED LAN: ncm0 (Download Target)
+[00:05:15] DETECTED WAN: table (Upload Target)
+[00:05:15] Resetting Rules...
+[00:05:16] Reset DONE.
+[00:05:23] DETECTED LAN: ncm0 (Download Target)
+[00:05:23] DETECTED WAN: table (Upload Target)
+--- NEW SESSION (FWD) ---
+[00:05:23] Resetting Rules...
+[00:05:24] Init Global: D=2000mbit U=2000mbit
+[00:05:24] TC_ERR: tc qdisc add dev table root handle 1: htb default 9999 r2q 1 -> Cannot find device "table"
+[00:05:24] TC_ERR: tc class add dev table parent 1: classid 1:1 htb rate 2000mbit ceil 2000mbit -> Cannot find device "table"
+[00:05:24] TC_ERR: tc class add dev table parent 1:1 classid 1:9999 htb rate 2000mbit ceil 2000mbit prio 50 -> Cannot find device "table"
+[00:05:24] User 10.88.93.108 -> ID:0x0e89
+[00:05:24] TC_ERR: tc class add dev table parent 1:1 classid 1:0x0e89 htb rate 3mbit ceil 3mbit prio 10 -> Cannot find device "table"
+[00:05:24] TC_ERR: tc filter add dev table parent 1: protocol ip prio 10 handle 3721 fw flowid 1:0x0e89 -> Cannot find device "table"
