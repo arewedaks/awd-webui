@@ -3,3 +3,12 @@
 fatal: invalid refspec 'HEAD
 main'
 [2026-04-24 15:47:44] INFO: Update versi ke ...
+[main (root-commit) fd9b90e] Release
+ 1 file changed, 5 insertions(+)
+ create mode 100644 git_manager.log
+[2026-04-24 15:47:44] INFO: Pushing branch & tag...
+fatal: invalid refspec 'HEAD
+main'
+fatal: '' is not a valid tag name.
+fatal: invalid refspec ''
+[2026-04-24 15:47:48] INFO: Update versi ke ...
