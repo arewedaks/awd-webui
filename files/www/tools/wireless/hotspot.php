@@ -1,254 +1,83 @@
 <?php
-// --- 1. INISIALISASI & KONFIGURASI ---
-$message = ""; 
+$message = "";
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
-
 define('BACKEND_SCRIPT', '/data/adb/php8/scripts/hotspot');
 define('LOG_FILE', '/data/local/tmp/wifi_log.txt');
-$serviceFile = '/data/adb/service.d/auto_hotspot.sh';
 
-// --- TEMPLATE SCRIPT (Hanya dipakai saat pertama kali Enable) ---
-$shellScriptContent = <<<'EOT'
-#!/system/bin/sh
-# Unified Tethering Manager (Hotspot + RNDIS Watchdog)
-# Gabungan script auto_hotspot & auto_rndis
+$autoHotspotScript = '/data/adb/php8/scripts/onboot/auto_hotspot.sh';
+$cfgFile = '/data/adb/php8/files/config/onboot.cfg';
 
-LOGFILE=/sdcard/TetheringManager.log
-
-# --- 1. KONFIGURASI AWAL ---
-
-# Tunggu Booting
-while [ "$(getprop init.svc.bootanim)" != "stopped" ]; do
-    sleep 2
-done
-
-# Setup Logging
-log_msg() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $LOGFILE
-}
-
-# Setup Flashlight Path
-FLASH_PATH=""
-for path in /sys/class/leds/flashlight /sys/class/leds/torch-light0 /sys/class/leds/led:torch_0; do
-    if [ -f "$path/brightness" ]; then
-        FLASH_PATH="$path/brightness"
-        break
-    fi
-done
-
-# Setup Interface RNDIS (Auto Detect)
-if ip link show rndis0 >/dev/null 2>&1; then
-    IFACE_USB="rndis0"
-elif ip link show usb0 >/dev/null 2>&1; then
-    IFACE_USB="usb0"
-else
-    IFACE_USB="rndis0" # Default
-fi
-
-# --- 2. FUNGSI-FUNGSI UTAMA ---
-
-blink_flash() {
-    if [ ! -z "$FLASH_PATH" ]; then
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH
-    fi
-}
-
-# --- BAGIAN A: HOTSPOT WIFI ---
-is_hotspot_on() {
-    # Cek status AP via dumpsys (Lebih akurat)
-    if dumpsys wifi | grep -q "mWifiApState=13"; then
-        return 0
-    elif dumpsys wifi | grep -q "CurState=ApEnabledState"; then
-        return 0
-    else
-        # Fallback cek IP wlan
-        ip addr show wlan0 | grep -q "192.168."
-        return $?
-    fi
-}
-
-enable_hotspot() {
-    log_msg "[WIFI] Menyalakan Hotspot..."
-    cmd connectivity start-tethering wifi
-    if [ $? -ne 0 ]; then
-        service call tethering 4 null s16 random
-    fi
-}
-
-# --- BAGIAN B: RNDIS USB ---
-is_rndis_connected() {
-    # Cek apakah interface USB punya IP
-    ip addr show $IFACE_USB | grep -q "inet "
-    return $?
-}
-
-enable_rndis() {
-    log_msg "[USB] Mengaktifkan RNDIS pada $IFACE_USB..."
-    setprop sys.usb.config rndis,adb
-    sleep 3
-}
-
-# --- 3. INISIALISASI ---
-
-# Tambah IP Loopback untuk Web Server
-if ! ip addr show lo | grep -q "192.168.8.1"; then
-    ip addr add 192.168.8.1/24 dev lo
-    log_msg "[INIT] IP Loopback ditambahkan."
-fi
-
-# Cek Awal Hotspot saat boot
-if ! is_hotspot_on; then
-    enable_hotspot
-    sleep 5
-    if is_hotspot_on; then blink_flash; fi
-fi
-
-log_msg "[START] Tethering Manager Monitoring Started..."
-
-# --- 4. LOOPING UTAMA (WATCHDOG) ---
-while true; do
-    
-    # === CEK 1: HOTSPOT WIFI ===
-    if ! is_hotspot_on; then
-        log_msg "[WARN] Hotspot mati! Mencoba nyalakan kembali..."
-        enable_hotspot
-        # Tunggu sebentar untuk memastikan sistem memproses
-        sleep 10 
-        if is_hotspot_on; then
-            log_msg "[SUCCESS] Hotspot berhasil direstore."
-            blink_flash
-        fi
-    fi
-
-    # === CEK 2: RNDIS USB ===
-    # Cek apakah kabel USB tercolok (1 = Connected)
-    USB_ONLINE=$(cat /sys/class/power_supply/usb/online 2>/dev/null)
-    
-    if [ "$USB_ONLINE" = "1" ]; then
-        # Hanya jalankan logika RNDIS jika kabel dicolok
-        if ! is_rndis_connected; then
-            # Cek properti saat ini agar tidak spam command
-            CUR_PROP=$(getprop sys.usb.config)
-            
-            # Jika IP tidak ada, dan config bukan rndis (atau kita paksa refresh)
-            log_msg "[WARN] Kabel colok tapi IP RNDIS tidak ada. Fix..."
-            enable_rndis
-            
-            sleep 10
-            if is_rndis_connected; then
-                 log_msg "[SUCCESS] RNDIS Connected & IP Obtained."
-                 blink_flash
-            fi
-        fi
-    fi
-
-    # Delay 15 detik (Cukup cepat untuk responsif, cukup lama untuk hemat baterai)
-    sleep 15
-done
-EOT;
-
-// --- 2. LOGIKA PROSES (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // A. ENABLE/DISABLE BOOT (Metode Tulis Temp -> Pindah via Root)
     if (isset($_POST['action']) && $_POST['action'] === 'toggle_boot') {
         header('Content-Type: application/json');
-        $enable = $_POST['state'] === 'true';
-        
-        if ($enable) {
-            // Tulis ke folder www dulu (karena PHP punya izin di sini)
-            $tempFile = __DIR__ . '/temp_hotspot.sh';
-            if (file_put_contents($tempFile, $shellScriptContent) !== false) {
-                // Pindahkan menggunakan Root
-                shell_exec("su -c \"cat '$tempFile' > '$serviceFile'\"");
-                shell_exec("su -c \"chmod 755 '$serviceFile'\"");
-                unlink($tempFile); // Hapus temp
-                echo json_encode(['status' => 'success', 'message' => 'Auto Start Enabled']);
-            } else {
-                echo json_encode(['status' => 'error', 'message' => 'Write Failed (Check WWW Perms)']);
-            }
+        $enable = ($_POST['state'] === 'true') ? 1 : 0;
+        if (!file_exists($cfgFile)) file_put_contents($cfgFile, '');
+        $content = file_get_contents($cfgFile);
+        if (strpos($content, 'auto_hotspot=') !== false) {
+            $newContent = preg_replace('/auto_hotspot=\d/', "auto_hotspot=$enable", $content);
         } else {
-            shell_exec("su -c \"rm '$serviceFile'\"");
-            echo json_encode(['status' => 'success', 'message' => 'Auto Start Disabled']);
+            $newContent = rtrim($content) . "\nauto_hotspot=$enable\n";
+        }
+        if (file_put_contents($cfgFile, $newContent) !== false) {
+            chmod($cfgFile, 0666);
+            echo json_encode(['status' => 'success', 'message' => $enable ? 'Auto Start Enabled' : 'Auto Start Disabled']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Write Error']);
         }
         exit;
     }
 
-    // B. SAVE IP LOOPBACK (PERBAIKAN UTAMA: MENGGUNAKAN SED)
     if (isset($_POST['action']) && $_POST['action'] === 'save_ip') {
         header('Content-Type: application/json');
         $newIp = $_POST['ip_address'] ?? '';
-        
-        // Validasi format IP CIDR (contoh: 192.168.8.1/24)
         if (preg_match('/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$/', $newIp)) {
-            // Cek apakah file ada via Root
-            $checkFile = shell_exec("su -c \"ls '$serviceFile' 2>/dev/null\"");
-            
+            $checkFile = shell_exec("su -c \"ls '$autoHotspotScript' 2>/dev/null\"");
             if (!empty(trim($checkFile))) {
-                // GUNAKAN SED: Cari baris 'ip addr add ... dev lo' dan ganti IP-nya saja.
-                // Menggunakan delimiter | agar tidak bentrok dengan garis miring / pada CIDR
-                $cmd = "su -c \"sed -i 's|ip addr add .* dev lo|ip addr add $newIp dev lo|g' '$serviceFile'\"";
-                shell_exec($cmd);
-                
-                // Pastikan permission tetap benar
-                shell_exec("su -c \"chmod 755 '$serviceFile'\"");
-                
-                echo json_encode(['status' => 'success', 'message' => 'IP Updated via SED']);
+                shell_exec("su -c \"sed -i 's|ip addr add .* dev lo|ip addr add $newIp dev lo|g' '$autoHotspotScript' && chmod 755 '$autoHotspotScript'\"");
+                echo json_encode(['status' => 'success', 'message' => 'IP Updated']);
             } else {
-                echo json_encode(['status' => 'warning', 'message' => 'File not found (Enable Boot First)']);
+                echo json_encode(['status' => 'warning', 'message' => 'Script Not Found']);
             }
         } else {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid IP Format']);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid Format (ex: 192.168.8.1/24)']);
         }
         exit;
     }
 
-    // C. SAVE WIFI SETTINGS
     if (isset($_POST['save'])) {
         $ssid = $_POST['ssid'];
         $pass = $_POST['password'];
-        if (strlen($pass) < 8) { $message = "Failed: Password min 8 chars."; } 
-        else {
-            $command = "su -c \"" . BACKEND_SCRIPT . " " . escapeshellarg($ssid) . " " . escapeshellarg($pass) . "\"";
-            shell_exec($command);
-            $message = "Config applied. Check Log.";
+        if (strlen($pass) < 8) {
+            $message = "Failed: Min 8 chars.";
+        } else {
+            shell_exec("su -c \"" . BACKEND_SCRIPT . " " . escapeshellarg($ssid) . " " . escapeshellarg($pass) . "\"");
+            $message = "Config applied.";
         }
     }
-    
     if (isset($_POST['restart'])) shell_exec("su -c reboot");
-    if (isset($_POST['clear_log'])) { shell_exec("su -c \"echo '' > " . LOG_FILE . "\""); $message = "Log cleared."; }
+    if (isset($_POST['clear_log'])) {
+        shell_exec("su -c \"echo '' > " . LOG_FILE . "\"");
+        $message = "Log cleared.";
+    }
 }
 
-// --- 3. DATA FETCHING (BACA STATUS) ---
+$cfgContent = file_exists($cfgFile) ? file_get_contents($cfgFile) : '';
+$is_enabled = (preg_match('/auto_hotspot=1/', $cfgContent) === 1);
 
-// Cek status file via Root
-$checkFile = shell_exec("su -c \"ls '$serviceFile' 2>/dev/null\"");
-$is_enabled = !empty(trim($checkFile));
-
-$currentIp = '192.168.8.1/24'; // Default tampilan
-
-if ($is_enabled) {
-    // BACA ISI FILE MENGGUNAKAN CAT VIA ROOT (PENTING AGAR TERBACA)
-    $content = shell_exec("su -c \"cat '$serviceFile'\"");
-    
-    // Cari IP yang tersimpan di file
-    if (preg_match('/ip addr add (.*) dev lo/', $content, $matches)) {
+$currentIp = '192.168.8.1/24';
+$checkScript = shell_exec("su -c \"ls '$autoHotspotScript' 2>/dev/null\"");
+if (!empty(trim($checkScript))) {
+    $scriptContent = shell_exec("su -c \"cat '$autoHotspotScript'\"");
+    if (preg_match('/ip addr add (.*) dev lo/', $scriptContent, $matches)) {
         $currentIp = trim($matches[1]);
     }
 }
 
-// Ambil Config Wifi & Devices (Kode lama)
 function getCurrentConfig() {
-    $paths = ['/data/misc/apexdata/com.android.wifi/WifiConfigStoreSoftAp.xml', '/data/misc/wifi/WifiConfigStore.xml'];
+    $paths = [
+        '/data/misc/apexdata/com.android.wifi/WifiConfigStoreSoftAp.xml',
+        '/data/misc/wifi/WifiConfigStore.xml'
+    ];
     $content = "";
     foreach ($paths as $p) {
         $check = shell_exec("su -c \"ls $p 2>/dev/null\"");
@@ -273,13 +102,14 @@ function getConnectedDevicesDetail() {
     $output = shell_exec('ip neigh');
     $devices = [];
     if ($output) {
-        $lines = explode("\n", trim($output));
-        foreach ($lines as $line) {
+        foreach (explode("\n", trim($output)) as $line) {
             $parts = preg_split('/\s+/', trim($line));
             if (count($parts) >= 4) {
                 $ip = $parts[0]; $mac = 'N/A'; $status = end($parts);
-                foreach ($parts as $part) { if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $part)) { $mac = $part; break; } }
-                if ($mac !== 'N/A') { $devices[] = ['ip' => $ip, 'mac' => strtoupper($mac), 'status' => strtoupper($status)]; }
+                foreach ($parts as $part) {
+                    if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $part)) { $mac = $part; break; }
+                }
+                if ($mac !== 'N/A') $devices[] = ['ip' => $ip, 'mac' => strtoupper($mac), 'status' => strtoupper($status)];
             }
         }
     }
@@ -290,7 +120,6 @@ $current = getCurrentConfig();
 $deviceList = getConnectedDevicesDetail();
 $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -299,123 +128,147 @@ $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
     <title>Hotspot Manager Pro</title>
     <style>
         :root {
-            --bg: #f8f9fa; --card: #ffffff; --text: #2d3748; --sub: #718096; --border: #e2e8f0;
-            --pri: #fb8c00; --pri-s: #fff3e0; --dang: #f5365c; --tgl-bg: #cbd5e1;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05); --rad: 12px;
+            --primary: #B87333; --accent: rgba(184, 115, 51, 0.15); --border: rgba(255, 255, 255, 0.4);
+            --blur-val: blur(5px); --card-bg: rgba(255, 248, 240, 0.15);
+            --text-main: #3E2A1C; --text-sub: #7A5C43; --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --sub: #a0a0a0; --border: #2d2d2d;
-                --pri: #ff9800; --pri-s: #3e2723; --dang: #fc8181; --tgl-bg: #4b5563;
-                --shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+                --card-bg: rgba(10, 5, 2, 0.2); --text-main: #FDF5E6; --text-sub: #C0B2A2;
+                --border: rgba(255, 255, 255, 0.12); --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 600px; margin: 0 auto; }
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            background: transparent !important; color: var(--text-main);
+            padding: 20px; max-width: 1100px; margin: 0 auto; -webkit-font-smoothing: antialiased;
+        }
         header { text-align: center; margin-bottom: 25px; }
-        h1 { font-size: 1.4rem; font-weight: 700; color: var(--pri); text-transform: uppercase; }
-        .sub { font-size: 0.9rem; color: var(--sub); }
-        .tabs { display: flex; gap: 8px; margin-bottom: 20px; background: var(--card); padding: 5px; border-radius: 50px; border: 1px solid var(--border); box-shadow: var(--shadow); }
-        .tab { flex: 1; background: transparent; border: none; color: var(--sub); padding: 10px; border-radius: 25px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: 0.2s; }
-        .tab.active { background: var(--pri); color: white; }
-        .view { display: none; } .view.active { display: block; }
-        .card { background: var(--card); border-radius: var(--rad); padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 20px; }
-        .grp { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 8px; font-size: 0.8rem; font-weight: 600; color: var(--sub); text-transform: uppercase; }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 1rem; }
-        .sw-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
-        .sw { position: relative; width: 46px; height: 24px; }
+        h1 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
+        .sub-header { font-size: 0.8rem; color: var(--text-sub); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .layout-wrapper { display: flex; gap: 20px; align-items: flex-start; }
+        .col-left  { flex: 1; min-width: 0; }
+        .col-right { flex: 1; min-width: 0; }
+        @media (max-width: 768px) {
+            body { max-width: 600px; }
+            .layout-wrapper { flex-direction: column; }
+            .col-left, .col-right { width: 100%; flex: none; }
+        }
+        .tabs { display: flex; gap: 8px; margin-bottom: 25px; background: var(--card-bg); backdrop-filter: var(--blur-val); padding: 6px; border-radius: 50px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+        .tab { flex: 1; background: transparent; border: none; color: var(--text-sub); padding: 10px; border-radius: 25px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: 0.3s; }
+        .tab.active { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(184, 115, 51, 0.3); }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: var(--card-bg); backdrop-filter: var(--blur-val); -webkit-backdrop-filter: var(--blur-val); padding: 24px; border-radius: 24px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 20px; position: relative; overflow: hidden; }
+        .card::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none; }
+        .grp { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 10px; font-size: 0.75rem; font-weight: 800; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], input[type="number"], input[type="password"] { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text-main); font-size: 1rem; font-weight: 600; transition: 0.3s; }
+        input:focus { border-color: var(--primary); background: rgba(255,255,255,0.1); }
+        .sw-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+        .sw { position: relative; width: 50px; height: 28px; display: inline-block; }
         .sw input { opacity: 0; width: 0; height: 0; }
-        .sl { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--tgl-bg); transition: .3s; border-radius: 30px; }
-        .sl:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; transition: .3s; border-radius: 50%; }
-        input:checked + .sl { background: var(--pri); }
+        .sl { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.1); transition: .4s; border-radius: 34px; border: 1px solid var(--border); }
+        .sl:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #fff; transition: .4s; border-radius: 50%; }
+        input:checked + .sl { background-color: var(--primary); }
         input:checked + .sl:before { transform: translateX(22px); }
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 10px; transition: 0.2s; font-size: 0.9rem; text-transform: uppercase; }
-        .bp { background: var(--pri); color: white; }
-        .bo { background: transparent; border: 1px solid var(--border); color: var(--sub); }
-        .bd { background: transparent; border: 1px solid var(--dang); color: var(--dang); }
+        .btn { width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 16px; font-weight: 800; cursor: pointer; margin-top: 12px; transition: 0.3s; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .bp { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(184, 115, 51, 0.2); border: none; }
+        .bo { background: rgba(255, 255, 255, 0.05); color: var(--text-main); }
+        .bd { background: rgba(255, 59, 48, 0.1); color: #ff3b30; border-color: rgba(255, 59, 48, 0.2); }
+        .btn:active { transform: scale(0.97); }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        td, th { padding: 12px 8px; border-bottom: 1px solid var(--border); text-align: left; }
-        .log { background: #1a1a1a; color: #e0e0e0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.75rem; white-space: pre-wrap; height: 250px; overflow-y: auto; border: 1px solid var(--border); margin-bottom: 15px; }
-        .alert { background: var(--pri-s); color: var(--pri); padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600; border: 1px solid var(--pri); }
-        #toast { visibility: hidden; min-width: 200px; background: #333; color: #fff; text-align: center; border-radius: 50px; padding: 10px; position: fixed; z-index: 100; bottom: 30px; left: 50%; transform: translateX(-50%); opacity: 0; transition: 0.3s; font-size: 0.8rem; }
-        #toast.show { visibility: visible; opacity: 1; bottom: 40px; }
+        th, td { padding: 14px 8px; border-bottom: 1px dashed rgba(122, 92, 67, 0.15); text-align: left; }
+        th { color: var(--text-sub); font-weight: 800; text-transform: uppercase; font-size: 0.7rem; }
+        .log { background: rgba(30, 18, 10, 0.4); color: #FDF5E6; padding: 18px; border-radius: 16px; font-family: 'SF Mono', monospace; font-size: 0.75rem; white-space: pre-wrap; height: 280px; overflow-y: auto; border: 1px solid var(--border); margin-bottom: 20px; }
+        .alert { background: var(--accent); color: var(--primary); padding: 14px; border-radius: 14px; margin-bottom: 20px; text-align: center; font-weight: 800; border: 1px solid var(--primary); font-size: 0.85rem; }
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #fff; padding: 12px 25px; border-radius: 30px; font-size: 0.85rem; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 100; backdrop-filter: blur(10px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        #toast.show { opacity: 1; bottom: 45px; }
+        .boot-status { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px; }
+        .boot-on  { background: rgba(50,215,75,0.15);  color: #32d74b; border: 1px solid rgba(50,215,75,0.3); }
+        .boot-off { background: rgba(180,180,180,0.1); color: var(--text-sub); border: 1px solid var(--border); }
     </style>
 </head>
 <body>
-
     <header>
         <h1>Hotspot Manager</h1>
-        <div class="sub">Control Service & Monitor</div>
+        <div class="sub-header">Autumn Tethering Engine</div>
     </header>
 
-    <?php if ($message): ?>
-        <div class="alert"><?= $message ?></div>
-    <?php endif; ?>
+    <?php if ($message): ?><div class="alert"><?= htmlspecialchars($message) ?></div><?php endif; ?>
 
     <div class="tabs">
         <button class="tab active" onclick="sw('set')" id="b-set">Settings</button>
         <button class="tab" onclick="sw('dev')" id="b-dev">Clients</button>
-        <button class="tab" onclick="sw('log')" id="b-log">Logs</button>
+        <button class="tab" onclick="sw('log')" id="b-log">System Log</button>
     </div>
 
     <div id="v-set" class="view active">
-        <div class="card">
-            <div class="sw-row">
-                <span style="font-weight:700">Auto Start on Boot</span>
-                <label class="sw">
-                    <input type="checkbox" id="bt" <?= $is_enabled ? 'checked' : '' ?>>
-                    <span class="sl"></span>
-                </label>
-            </div>
-            <div class="grp" style="margin-top:15px">
-                <label>IP Loopback</label>
-                <div style="display:flex; gap:8px">
-                    <input type="text" id="ip_val" value="<?= htmlspecialchars($currentIp) ?>" style="font-family:monospace">
-                    <button id="save_ip_btn" class="bp" style="width:80px; border-radius:8px; border:none; color:white; font-weight:700; cursor:pointer">SET</button>
+        <div class="layout-wrapper">
+            <div class="col-left">
+                <div class="card">
+                    <div class="sw-row">
+                        <div>
+                            <div style="font-weight:800; font-size:0.9rem; text-transform:uppercase; margin-bottom:4px;">Auto-Boot Manager</div>
+                            <span class="boot-status <?= $is_enabled ? 'boot-on' : 'boot-off' ?>" id="bootBadge"><?= $is_enabled ? 'ENABLED' : 'DISABLED' ?></span>
+                        </div>
+                        <label class="sw">
+                            <input type="checkbox" id="bt" <?= $is_enabled ? 'checked' : '' ?>>
+                            <span class="sl"></span>
+                        </label>
+                    </div>
+                    <div class="grp" style="margin-top:20px">
+                        <label>Loopback Interface (Web Server)</label>
+                        <div style="display:flex; gap:10px">
+                            <input type="text" id="ip_val" value="<?= htmlspecialchars($currentIp) ?>" style="font-family:'SF Mono',monospace; flex:1">
+                            <button id="save_ip_btn" class="bp" style="width:70px; border-radius:14px; cursor:pointer; margin-top:0; padding:0">SET</button>
+                        </div>
+                        <div style="margin-top:8px; font-size:0.65rem; color:var(--text-sub); opacity:0.8;">Format: 192.168.x.x/24 &nbsp;·&nbsp; Script: auto_hotspot.sh</div>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div class="card">
-            <form method="POST">
-                <div class="grp"><label>SSID Name</label><input type="text" name="ssid" value="<?= htmlspecialchars($current['ssid']) ?>" required></div>
-                <div class="grp"><label>Password</label><input type="text" name="password" value="<?= htmlspecialchars($current['pass']) ?>" required></div>
-                <button type="submit" name="save" class="btn bp">Apply Wifi Settings</button>
-            </form>
-            <form method="POST" onsubmit="return confirm('Reboot device?')"><button type="submit" name="restart" class="btn bo">Reboot System</button></form>
+            <div class="col-right">
+                <div class="card">
+                    <form method="POST">
+                        <div class="grp"><label>Hotspot SSID</label><input type="text" name="ssid" value="<?= htmlspecialchars($current['ssid']) ?>" required></div>
+                        <div class="grp"><label>Security Password</label><input type="text" name="password" value="<?= htmlspecialchars($current['pass']) ?>" required></div>
+                        <button type="submit" name="save" class="btn bp">Update Hotspot</button>
+                    </form>
+                    <form method="POST" onsubmit="return confirm('Full system reboot?')" style="margin-top:0">
+                        <button type="submit" name="restart" class="btn bo">Reboot System</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
     <div id="v-dev" class="view">
         <div class="card">
-            <h3 style="margin-bottom:15px; font-size:0.9rem">Connected Devices</h3>
-            <div style="overflow-x:auto;">
-                <table>
-                    <thead><tr><th>IP</th><th>MAC</th><th>Status</th></tr></thead>
-                    <tbody>
-                        <?php if (empty($deviceList)): ?>
-                            <tr><td colspan="3" style="text-align:center; padding:20px; color:var(--sub)">No devices.</td></tr>
-                        <?php else: foreach ($deviceList as $d): ?>
-                            <tr>
-                                <td style="font-family:monospace"><?= htmlspecialchars($d['ip']) ?></td>
-                                <td style="font-family:monospace"><?= htmlspecialchars($d['mac']) ?></td>
-                                <td style="color:var(--pri); font-weight:700"><?= htmlspecialchars($d['status']) ?></td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
-            </div>
-            <button onclick="location.reload()" class="btn bo">Refresh List</button>
+            <table>
+                <thead><tr><th>IP Address</th><th>MAC Address</th><th>Status</th></tr></thead>
+                <tbody>
+                    <?php if (empty($deviceList)): ?>
+                        <tr><td colspan="3" style="text-align:center; padding:40px; color:var(--text-sub); font-weight:700;">No connected devices</td></tr>
+                    <?php else: foreach ($deviceList as $d): ?>
+                        <tr>
+                            <td style="font-family:'SF Mono',monospace; font-weight:600;"><?= htmlspecialchars($d['ip']) ?></td>
+                            <td style="font-family:'SF Mono',monospace; font-size:0.75rem;"><?= htmlspecialchars($d['mac']) ?></td>
+                            <td style="color:var(--primary); font-weight:800; font-size:0.7rem;"><?= htmlspecialchars($d['status']) ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+            <button onclick="location.reload()" class="btn bo" style="margin-top:20px">Refresh List</button>
         </div>
     </div>
 
     <div id="v-log" class="view">
         <div class="card">
-            <label>Service Log</label>
             <div class="log"><?= htmlspecialchars($log_content) ?></div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button onclick="location.reload()" class="btn bo">Refresh</button>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <button onclick="location.reload()" class="btn bo">Reload</button>
                 <form method="POST" style="margin:0"><button type="submit" name="clear_log" class="btn bd">Clear</button></form>
             </div>
         </div>
@@ -426,30 +279,44 @@ $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
     <script>
         const t = document.getElementById("toast");
         function msg(m) { t.innerText = m; t.className = "show"; setTimeout(() => t.className = "", 3000); }
-        
-        function sw(t) {
+
+        function sw(v) {
             document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
-            document.getElementById('v-'+t).classList.add('active');
-            document.getElementById('b-'+t).classList.add('active');
+            document.getElementById('v-'+v).classList.add('active');
+            document.getElementById('b-'+v).classList.add('active');
         }
 
-        // Auto Start Toggle
         document.getElementById('bt').addEventListener('change', function() {
             const s = this.checked;
-            const fd = new FormData(); fd.append('action', 'toggle_boot'); fd.append('state', s);
+            const fd = new FormData();
+            fd.append('action', 'toggle_boot');
+            fd.append('state', s ? 'true' : 'false');
             fetch('', { method: 'POST', body: fd })
-            .then(r => r.json()).then(d => { msg(d.message); if(d.status==='error') this.checked = !s; })
-            .catch(() => { msg("Failed"); this.checked = !s; });
+                .then(r => r.json())
+                .then(d => {
+                    msg(d.message);
+                    if (d.status === 'error') {
+                        this.checked = !s;
+                    } else {
+                        const badge = document.getElementById('bootBadge');
+                        badge.textContent = s ? 'ENABLED' : 'DISABLED';
+                        badge.className = 'boot-status ' + (s ? 'boot-on' : 'boot-off');
+                    }
+                })
+                .catch(() => { msg("System Error"); this.checked = !s; });
         });
 
-        // Save IP Loopback
         document.getElementById('save_ip_btn').addEventListener('click', function() {
-            const v = document.getElementById('ip_val').value;
-            const fd = new FormData(); fd.append('action', 'save_ip'); fd.append('ip_address', v);
+            const v = document.getElementById('ip_val').value.trim();
+            if (!v) { msg("IP kosong!"); return; }
+            const fd = new FormData();
+            fd.append('action', 'save_ip');
+            fd.append('ip_address', v);
             fetch('', { method: 'POST', body: fd })
-            .then(r => r.json()).then(d => msg(d.message))
-            .catch(() => msg("Error saving IP"));
+                .then(r => r.json())
+                .then(d => msg(d.message))
+                .catch(() => msg("Error"));
         });
     </script>
 </body>

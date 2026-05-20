@@ -404,9 +404,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </button>
                 <div class="dropdown-container">
                     <a onclick="loadContent('/tools/vnstat.php')">Bandwidth</a>
-                    <a onclick="loadContent('/tools/modpes.php')">Airplane Pilot</a>
-                    <a onclick="loadContent('/tools/Fix_ttl.php')">TTL Config</a>
-                    <a onclick="loadContent('/tools/auto_airplane.php')">Auto Airplane</a>
+                    <a onclick="loadContent('/tools/airplane/airplane.php')">IP Hunter</a>
+                    <a onclick="loadContent('/tools/ttl/Fix_ttl.php')">TTL Config</a>
                     <a onclick="loadContent('/tools/sim-configuration.php')">SIM Config</a>
                     <a onclick="loadContent('/tools/wireless_mgr.php')">Wireless Mgr</a>
                     <a onclick="loadContent('/tools/interface/interface.php')">Interface</a>

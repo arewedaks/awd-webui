@@ -8,7 +8,7 @@ $host = $x[0];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wireless Manager</title>
+    <title>Network Manager</title>
     <style>
         :root {
             --primary: #B87333; 
@@ -110,31 +110,35 @@ $host = $x[0];
 
 <div class="nav-bar">
     <div class="tabs">
-        <div class="tab active" onclick="sw('hotspot')" id="b-hotspot">Hotspot</div>
-        <div class="tab" onclick="sw('limiter')" id="b-limiter">Limiter</div>
+        <div class="tab active" onclick="sw('iphunter')" id="b-iphunter">IP Hunter</div>
+        <div class="tab" onclick="sw('modpes')" id="b-modpes">Airplane</div>
     </div>
 </div>
 
 <div class="container">
-    <div id="v-hotspot" class="view active"><iframe id="f-hotspot"></iframe></div>
-    <div id="v-limiter" class="view"><iframe id="f-limiter"></iframe></div>
+    <div id="v-iphunter" class="view active"><iframe id="f-iphunter"></iframe></div>
+    <div id="v-modpes" class="view"><iframe id="f-modpes"></iframe></div>
 </div>
 
 <script>
-    const uHost = '/tools/wireless/hotspot.php';
-    const uLimit = '/tools/wireless/limiter';
+    const uIpHunter = 'iphunter.php';
+    const uModpes = 'modpes.php';
 
     function sw(t) {
         document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
         document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+        
         document.getElementById('v-' + t).classList.add('active');
         document.getElementById('b-' + t).classList.add('active');
+        
         const f = document.getElementById('f-' + t);
-        if (!f.getAttribute('src')) f.src = (t === 'hotspot') ? uHost : uLimit;
+        if (!f.getAttribute('src')) {
+            f.src = (t === 'iphunter') ? uIpHunter : uModpes;
+        }
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById('f-hotspot').src = uHost;
+        document.getElementById('f-iphunter').src = uIpHunter;
     });
 </script>
 

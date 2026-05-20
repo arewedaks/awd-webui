@@ -38,6 +38,7 @@ set_recursive "$php_bin_dir" $system_uid $system_gid 0755 0755
 echo "🚀 Applying specific binary permissions..."
 set_single "${php_data_dir}/scripts/php_run" 0 0 0755
 set_single "${php_data_dir}/scripts/ttyd_run" 0 0 0755
+set_single "${php_data_dir}/scripts/autorun" 0 0 0755
 set_single "${php_data_dir}/scripts/sfa" 0 0 0755
 set_single "${php_data_dir}/scripts/php_inotifyd" 0 0 0755
 set_single "${php_data_dir}/files/bin/php" 0 0 0755

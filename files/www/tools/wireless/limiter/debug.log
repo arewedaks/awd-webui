@@ -1,0 +1,5 @@
+[14:45:32] DETECTED LAN: ncm0 (Download Target)
+[14:45:32] DETECTED WAN: wlan0 (Upload Target)
+--- NEW SESSION (FWD) ---
+[14:45:32] Resetting Rules...
+[14:45:32] Init Global: D=2000mbit U=2000mbit

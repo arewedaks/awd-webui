@@ -1,0 +1,25 @@
+#!/system/bin/sh
+until [ "$(getprop sys.boot_completed)" = "1" ]; do
+    sleep 5
+done
+export PATH=/data/data/com.termux/files/usr/bin:/system/bin:/system/xbin:$PATH
+
+CONFIG="/data/adb/php8/files/config/onboot.cfg"
+SCRIPT_DIR="/data/adb/php8/scripts/onboot"
+
+if [ ! -f "$CONFIG" ]; then
+    exit 1
+fi
+
+while IFS='=' read -r key value; do
+    clean_value=$(echo "$value" | tr -d "'\"" | tr -d '[:space:]')
+    
+    if [ "$clean_value" = "1" ]; then
+        script_file="$SCRIPT_DIR/$key.sh"
+        
+        # Eksekusi skrip di background
+        if [ -f "$script_file" ]; then
+            sh "$script_file" &
+        fi
+    fi
+done < "$CONFIG"

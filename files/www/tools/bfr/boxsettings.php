@@ -78,41 +78,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Box Config</title>
     <style>
+        /* --- TEMA VISIONOS CHOCOLATE GLASSMORPHISM (LOCKED) --- */
         :root {
-            --bg: #f8f9fa; --card: #ffffff; --text: #2d3748; --sub: #718096; --border: #e2e8f0;
-            --pri: #fb8c00; --pri-h: #ef6c00; --inp-bg: #ffffff;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05); --radius: 12px;
+            /* Warna Dasar Chocolate */
+            --primary: #B87333; 
+            --primary-hover: #8B5A2B;
+            --accent: rgba(184, 115, 51, 0.15);
+            --border-glass: rgba(255, 255, 255, 0.4);
+            --blur-val: blur(5px);
+            
+            /* Light Mode */
+            --card-bg: rgba(255, 248, 240, 0.15);
+            --text-main: #3E2A1C;
+            --text-sub: #7A5C43;
+            --inp-bg: rgba(62, 42, 28, 0.05);
+            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
         }
+
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --sub: #a0a0a0; --border: #2d2d2d;
-                --pri: #fb8c00; --pri-h: #ffa726; --inp-bg: #2c2c2c;
-                --shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+                /* Dark Mode */
+                --card-bg: rgba(10, 5, 2, 0.2);
+                --text-main: #FDF5E6;
+                --text-sub: #C0B2A2;
+                --inp-bg: rgba(253, 245, 230, 0.08);
+                --border-glass: rgba(255, 255, 255, 0.12);
+                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
+
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; max-width: 800px; margin: 0 auto; padding-bottom: 80px; }
         
-        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); padding: 24px; }
-        .head { margin-bottom: 24px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
-        h1 { font-size: 1.4rem; font-weight: 700; color: var(--pri); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        p { color: var(--sub); font-size: 0.9rem; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
+            background: transparent !important; /* Tembus ke daun index.php */
+            color: var(--text-main); 
+            padding: 16px; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding-bottom: 80px; 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* --- GLASSMORPHISM CARD --- */
+        .card { 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur-val); 
+            -webkit-backdrop-filter: var(--blur-val);
+            border-radius: 24px; 
+            box-shadow: var(--shadow); 
+            border: 1px solid var(--border-glass); 
+            padding: 24px; 
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: 24px; box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none;
+        }
+
+        .head { margin-bottom: 24px; padding-bottom: 15px; border-bottom: 1px dashed rgba(122, 92, 67, 0.2); }
+        h1 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+        p { color: var(--text-sub); font-size: 0.85rem; font-weight: 500; }
 
         .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
         @media (min-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
         .full { grid-column: 1 / -1; }
 
         .grp { margin-bottom: 5px; }
-        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text); text-transform: capitalize; }
-        input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--inp-bg); color: var(--text); font-size: 0.95rem; transition: 0.2s; }
-        input:focus, select:focus { border-color: var(--pri); box-shadow: 0 0 0 3px rgba(251, 140, 0, 0.2); }
+        label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        input, select { 
+            width: 100%; 
+            padding: 12px 16px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-glass); 
+            background: var(--inp-bg); 
+            color: var(--text-main); 
+            font-size: 0.95rem; 
+            font-weight: 500;
+            transition: 0.3s ease; 
+            backdrop-filter: blur(2px);
+        }
+        
+        input:focus, select:focus { 
+            border-color: var(--primary); 
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 0 3px rgba(184, 115, 51, 0.2); 
+        }
 
-        .btn { width: 100%; background: var(--pri); color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 25px; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn:hover { background: var(--pri-h); transform: translateY(-1px); }
-        .btn:active { transform: translateY(1px); }
-        .btn:disabled { opacity: 0.7; cursor: wait; }
+        /* --- BUTTON CHOCOLATE --- */
+        .btn { 
+            width: 100%; 
+            background: var(--primary); 
+            color: #fff; 
+            border: 1px solid var(--border-glass); 
+            padding: 16px; 
+            border-radius: 14px; 
+            font-size: 0.95rem; 
+            font-weight: 700; 
+            cursor: pointer; 
+            margin-top: 25px; 
+            transition: 0.3s ease; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+        .btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled { opacity: 0.5; cursor: wait; }
 
-        #toast { visibility: hidden; min-width: 250px; background: #4caf50; color: #fff; text-align: center; border-radius: 50px; padding: 12px; position: fixed; z-index: 100; bottom: 30px; left: 50%; transform: translateX(-50%); box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-weight: 600; opacity: 0; transition: 0.3s; }
+        /* --- TOAST GLASS --- */
+        #toast { 
+            visibility: hidden; 
+            min-width: 250px; 
+            background: rgba(52, 199, 89, 0.85); 
+            color: #fff; 
+            text-align: center; 
+            border-radius: 50px; 
+            padding: 14px; 
+            position: fixed; 
+            z-index: 100; 
+            bottom: 30px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            box-shadow: var(--shadow); 
+            font-weight: 700; 
+            opacity: 0; 
+            transition: 0.4s; 
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
         #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
     </style>
 </head>
@@ -121,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="card">
         <div class="head">
             <h1>Configuration</h1>
-            <p>Edit core settings for Box</p>
+            <p>Settings for Box (Core, Network, & Proxy)</p>
         </div>
 
         <form id="cfgForm">
@@ -156,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endforeach; ?>
             </div>
 
-            <button type="submit" class="btn">Save Changes</button>
+            <button type="submit" class="btn">Save Configuration</button>
         </form>
     </div>
 
@@ -167,11 +264,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             e.preventDefault();
             const btn = document.querySelector('.btn');
             const txt = btn.innerText;
-            btn.innerText = 'Saving...'; btn.disabled = true;
+            btn.innerText = 'Applying...'; btn.disabled = true;
 
             fetch('', { method: 'POST', body: new FormData(this) })
             .then(r => r.json())
             .then(d => { if(d.status === 'success') showToast(); })
+            .catch(err => alert('Error saving settings'))
             .finally(() => { btn.innerText = txt; btn.disabled = false; });
         });
 

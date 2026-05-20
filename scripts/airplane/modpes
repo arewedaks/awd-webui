@@ -1,11 +1,15 @@
 #!/system/bin/sh
 
+# --- VARIABEL KONFIGURASI (Diedit otomatis oleh PHP) ---
+url='https://www.gstatic.com/generate_204'
+to=2
+ip=''
+
+# --- DEFINISI DIRECTORY ---
 MODDIR=${0%/*}
 LOG_FILE="$MODDIR/connection.log"
 PID_FILE="$MODDIR/connection.pid"
 timeout_count=0
-url=https://www.gstatic.com/generate_204
-to=7
 
 get_host_from_url() {
     local u="$1"
@@ -18,20 +22,13 @@ get_host_from_url() {
 
 PING_HOST=$(get_host_from_url "$url")
 
-if [ -z "$PING_HOST" ]; then
-    echo "Unable to get host from url '$url'" >&2
-    exit 1
-fi
-
 [ ! -f "$LOG_FILE" ] && touch "$LOG_FILE"
-
 echo $$ > "$PID_FILE"
 
 cleanup() {
     rm -f "$PID_FILE"
     exit 0
 }
-
 trap cleanup EXIT TERM INT
 
 log_message() {
@@ -44,7 +41,75 @@ log_message() {
     fi
 }
 
-log_message "Starting automatic airplane mode task with URL/Host $url / $PING_HOST"
+get_current_ip() {
+    local cur_ip
+    cur_ip=''
+    echo "$cur_ip"
+}
+
+check_ip_match() {
+    if [ -z "$ip" ]; then
+        return 0
+    fi
+    
+    local current_ip=''
+    if [ -z "$current_ip" ]; then
+        return 1
+    fi
+
+    # Ambil Octet ke-1 dan ke-2 dari IP HP saat ini
+    local cur_oct1=$(echo "$current_ip" | cut -d. -f1)
+    local cur_oct2=$(echo "$current_ip" | cut -d. -f2)
+
+    local found=false
+    local old_ifs=$IFS
+    IFS=';'
+    for entry in $ip; do
+        if echo "$entry" | grep -q "-"; then
+            # Format Range: 100.64-100.127
+            local start_ip=''
+            local end_ip=''
+            
+            # Ambil Octet ke-1 & ke-2 dari batas range
+            local target_oct1=$(echo "$start_ip" | cut -d. -f1)
+            local min_oct2=$(echo "$start_ip" | cut -d. -f2)
+            local max_oct2=$(echo "$end_ip" | cut -d. -f2)
+
+            # VALIDASI: Octet 1 harus SAMA, dan Octet 2 harus MASUK RANGE
+            if [ "$cur_oct1" = "$target_oct1" ] && [ "$cur_oct2" -ge "$min_oct2" ] && [ "$cur_oct2" -le "$max_oct2" ]; then
+                found=true
+                break
+            fi
+        else
+            # Format Statis biasa: 100.9
+            if [[ "$current_ip" == "$entry"* ]]; then
+                found=true
+                break
+            fi
+        fi
+    done
+    IFS=$old_ifs
+
+    if [ "$found" = true ]; then
+        log_message "IP Match Found: $current_ip"
+        return 0
+    else
+        log_message "IP Mis-match: $current_ip. Re-hunting..."
+        return 1
+    fi
+}
+
+do_airplane_toggle() {
+    log_message "Refreshing Network (Airplane Mode)..."
+    settings put global airplane_mode_on 1
+    am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true --user 0 > /dev/null 2>&1
+    sleep 2
+    settings put global airplane_mode_on 0
+    am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false --user 0 > /dev/null 2>&1
+    sleep 6 
+}
+
+log_message "Service Started. Host: $PING_HOST"
 
 while true; do
     ping_output=$(ping -c 1 -W 3 "$PING_HOST" 2>&1)
@@ -52,42 +117,33 @@ while true; do
 
     if [ $ping_exit -eq 0 ]; then
         time_ms=$(echo "$ping_output" | awk -F'time=' '/time=/{print $2; exit}' | awk '{print $1}')
-        time_ms=$(echo "$time_ms" | sed 's/ms//g' | tr -d '\r' | tr ',' '.')
         [ -z "$time_ms" ] && time_ms="0.000"
-        clean_time=$(echo "$time_ms" | sed -E 's/^0+\.0*//;s/^0+\.//')
-        [ -z "$clean_time" ] && clean_time="0"
+        
         http_code=$(curl -I -m 5 -s -o /dev/null -w "%{http_code}" "$url")
-        [ -z "$http_code" ] && http_code="000"
-
-        case "$http_code" in
-            200|204)
+        
+        if [[ "$http_code" == "200" || "$http_code" == "204" ]]; then
+            # Cek IP Hunter (Hanya berjalan jika variabel 'ip' ada isinya)
+            if check_ip_match; then
                 timeout_count=0
-                log_message "Active Connection, HTTP=(${http_code}), latency=(${clean_time}ms)"
-                ;;
-            *)
-                ((timeout_count++))
-                log_message "Connection Lost $timeout_count/$to (Network unreachable, HTTP=(${http_code}))"
-                ;;
-        esac
+                log_message "Active Connection, HTTP=(${http_code}), latency=(${time_ms}ms)"
+            else
+                # IP tidak cocok, buru IP baru
+                do_airplane_toggle
+                timeout_count=0
+            fi
+        else
+            ((timeout_count++))
+            log_message "Connection Lost $timeout_count/$to (HTTP Error: $http_code)"
+        fi
     else
         ((timeout_count++))
-        reason=$(echo "$ping_output" | head -n1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        log_message "Connection Lost $timeout_count/$to ($reason)"
+        log_message "Connection Lost $timeout_count/$to (Ping Failed)"
     fi
 
     if [ "$timeout_count" -ge "$to" ]; then
-        log_message "Enable Airplane Mode"
-        settings put global airplane_mode_radios cell,bluetooth
-        settings put global airplane_mode_on 1
-        settings get global airplane_mode_radios >> "$LOG_FILE" 2>&1
-        am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true
-        sleep 2
-        log_message "Disable Airplane Mode"
-        settings put global airplane_mode_on 0
-        am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false
-        sleep 5
+        do_airplane_toggle
         timeout_count=0
     fi
 
-    sleep 1
+    sleep 2
 done

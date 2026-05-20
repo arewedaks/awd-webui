@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'pill_text' => 'Unknown',
             'pill_class' => 'st-off',
             'icon' => '🚫',
-            'log_data' => $status_raw // Data Log dikirim disini
+            'log_data' => $status_raw 
         ];
 
         // Logika Status UI
@@ -111,76 +111,155 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tailscale Dashboard</title>
     <style>
+        /* --- TEMA VISIONOS CHOCOLATE GLASSMORPHISM (LOCKED) --- */
         :root {
-            --bg: #f0f2f5; --card: #ffffff; --text: #1a202c; --sub: #718096; --border: #e2e8f0;
-            --pri: #fb8c00; --pri-h: #ef6c00; --pri-soft: #fff3e0;
-            --dang: #e53e3e; --dang-soft: #fff5f5; 
-            --succ: #38a169; --succ-soft: #f0fff4;
-            --warn: #d69e2e; --warn-soft: #fffff0;
-            --term-bg: #1a202c; --term-txt: #63b3ed;
-            --rad: 16px; --shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            --primary: #B87333; 
+            --primary-h: #8B5A2B;
+            --accent: rgba(184, 115, 51, 0.15);
+            --border-glass: rgba(255, 255, 255, 0.4);
+            --blur-val: blur(5px);
+            
+            --card-bg: rgba(255, 248, 240, 0.15);
+            --text-main: #3E2A1C;
+            --text-sub: #7A5C43;
+            
+            --dang: #ff3b30; --dang-soft: rgba(255, 59, 48, 0.15); 
+            --succ: #34c759; --succ-soft: rgba(52, 199, 89, 0.15);
+            --warn: #ff9f0a; --warn-soft: rgba(255, 159, 10, 0.15);
+            
+            --term-bg: rgba(30, 18, 10, 0.4); --term-txt: #FDF5E6;
+            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
+            --rad: 24px;
         }
+
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #121212; --card: #1e1e1e; --text: #e2e8f0; --sub: #a0aec0; --border: #2d3748;
-                --pri: #fb8c00; --pri-h: #ffa726; --pri-soft: #2c2115;
-                --dang: #fc8181; --dang-soft: #2d1818;
-                --succ: #68d391; --succ-soft: #15251d;
-                --warn: #f6e05e; --warn-soft: #2c2a1e;
-                --term-bg: #000000; --term-txt: #90cdf4;
-                --shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+                --card-bg: rgba(10, 5, 2, 0.2);
+                --text-main: #FDF5E6;
+                --text-sub: #C0B2A2;
+                --border-glass: rgba(255, 255, 255, 0.12);
+                --term-bg: rgba(0, 0, 0, 0.4);
+                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
+
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
+            background: transparent !important; 
+            color: var(--text-main); 
+            padding: 20px; 
+            max-width: 500px; 
+            margin: 0 auto; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            -webkit-font-smoothing: antialiased;
+        }
         
         .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; }
-        .logo { font-size: 1.2rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
-        .logo span { color: var(--pri); }
-        .status-pill { font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .st-on { background: var(--succ-soft); color: var(--succ); border: 1px solid var(--succ); }
-        .st-off { background: var(--dang-soft); color: var(--dang); border: 1px solid var(--dang); }
-        .st-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
+        .logo { font-size: 1.1rem; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; text-transform: uppercase; }
+        .logo span { color: var(--primary); }
 
-        .hero { background: var(--card); border-radius: var(--rad); padding: 30px 20px; text-align: center; box-shadow: var(--shadow); position: relative; overflow: hidden; border: 1px solid var(--border); }
-        .pulse-ring { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .status-pill { font-size: 0.7rem; font-weight: 800; padding: 5px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--border-glass); backdrop-filter: var(--blur-val); }
+        .st-on { background: var(--succ-soft); color: var(--succ); }
+        .st-off { background: var(--dang-soft); color: var(--dang); }
+        .st-warn { background: var(--warn-soft); color: var(--warn); }
+
+        /* --- HERO CARD --- */
+        .hero { 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur-val); 
+            -webkit-backdrop-filter: var(--blur-val);
+            border-radius: var(--rad); 
+            padding: 35px 20px; 
+            text-align: center; 
+            box-shadow: var(--shadow); 
+            border: 1px solid var(--border-glass);
+            position: relative;
+        }
+        .hero::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: var(--rad); box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none;
+        }
+
+        .pulse-ring { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; position: relative; }
         .pulse-ring.active { background: var(--succ-soft); }
         .pulse-ring.inactive { background: var(--dang-soft); }
         .pulse-ring.warning { background: var(--warn-soft); }
-        .icon { font-size: 2rem; z-index: 2; }
+        .icon { font-size: 2.2rem; z-index: 2; }
+
         .pulse-ring.active::after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; background: var(--succ); opacity: 0.4; animation: pulse 2s infinite; }
         .pulse-ring.warning::after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; background: var(--warn); opacity: 0.4; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.7; } 70% { transform: scale(1.5); opacity: 0; } 100% { transform: scale(0.95); opacity: 0; } }
 
-        .ip-display { font-family: 'SF Mono', 'Roboto Mono', monospace; font-size: 1.4rem; font-weight: 700; margin: 10px 0 5px; color: var(--text); }
-        .lbl { font-size: 0.85rem; color: var(--sub); font-weight: 500; }
+        .ip-display { font-family: 'SF Mono', monospace; font-size: 1.5rem; font-weight: 800; margin: 10px 0 5px; color: var(--text-main); }
+        .lbl { font-size: 0.85rem; color: var(--text-sub); font-weight: 600; letter-spacing: 0.3px; }
 
+        /* --- CONTROLS --- */
         .ctrl-area { margin-top: 25px; }
-        .btn-main { width: 100%; border: none; padding: 18px; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: transform 0.1s; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .btn-main:active { transform: scale(0.98); }
-        .btn-connect { background: var(--pri); color: #fff; box-shadow: 0 4px 10px rgba(251, 140, 0, 0.3); }
-        .btn-stop { background: var(--card); color: var(--dang); border: 2px solid var(--dang); }
+        .btn-main { 
+            width: 100%; border: 1px solid var(--border-glass); padding: 18px; 
+            border-radius: 16px; font-weight: 800; font-size: 0.95rem; 
+            cursor: pointer; transition: 0.3s ease; text-transform: uppercase; 
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            letter-spacing: 1px; backdrop-filter: var(--blur-val);
+        }
+        .btn-main:active { transform: scale(0.96); }
+        .btn-connect { background: var(--primary); color: #fff; box-shadow: 0 5px 15px rgba(184, 115, 51, 0.25); }
+        .btn-stop { background: var(--dang-soft); color: var(--dang); border-color: rgba(255, 59, 48, 0.3); }
 
-        .hidden { display: none !important; }
-
-        .auth-box { background: var(--card); margin-top: 25px; border-radius: var(--rad); padding: 20px; border: 1px solid var(--border); box-shadow: var(--shadow); }
-        .auth-head { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .term { background: var(--term-bg); padding: 15px; border-radius: 8px; color: var(--term-txt); font-family: monospace; font-size: 0.8rem; word-break: break-all; border-left: 3px solid var(--pri); }
-        .term-btn { margin-top: 10px; width: 100%; background: transparent; border: 1px dashed var(--pri); color: var(--pri); padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-
-        .btn-logout { width: 100%; margin-top: 20px; background: transparent; color: var(--dang); border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; opacity: 0.7; }
-
-        /* LOG BOX STYLES */
-        .log-container { margin-top: 25px; border-top: 1px solid var(--border); padding-top: 15px; }
-        .log-toggle { font-size: 0.8rem; color: var(--sub); cursor: pointer; text-decoration: underline; text-align: center; display: block; margin-bottom: 10px; }
-        .log-box { background: var(--term-bg); color: #a0aec0; padding: 15px; border-radius: 8px; font-family: 'SF Mono', monospace; font-size: 0.7rem; height: 150px; overflow-y: auto; white-space: pre-wrap; display: none; border: 1px solid var(--border); }
-        .log-box.show { display: block; }
+        .auth-box { 
+            background: var(--card-bg); 
+            margin-top: 25px; 
+            border-radius: var(--rad); 
+            padding: 24px; 
+            border: 1px solid var(--border-glass); 
+            box-shadow: var(--shadow); 
+            backdrop-filter: var(--blur-val);
+        }
+        .auth-head { font-size: 0.9rem; font-weight: 800; color: var(--text-main); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; }
-        #toast.show { opacity: 1; bottom: 40px; }
+        .term { 
+            background: var(--term-bg); padding: 16px; border-radius: 12px; 
+            color: var(--term-txt); font-family: 'SF Mono', monospace; 
+            font-size: 0.8rem; word-break: break-all; 
+            border: 1px solid var(--border-glass);
+            cursor: copy;
+        }
+        .term-btn { 
+            margin-top: 15px; width: 100%; background: var(--accent); 
+            border: 1px dashed var(--primary); color: var(--primary); 
+            padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; 
+        }
+
+        .btn-logout { width: 100%; margin-top: 25px; background: transparent; color: var(--dang); border: none; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; }
+
+        /* --- LOGS --- */
+        .log-container { margin-top: 25px; padding-top: 15px; }
+        .log-toggle { font-size: 0.75rem; color: var(--text-sub); cursor: pointer; text-align: center; display: block; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .log-box { 
+            background: var(--term-bg); color: var(--text-sub); 
+            padding: 15px; border-radius: 12px; font-family: 'SF Mono', monospace; 
+            font-size: 0.7rem; height: 160px; overflow-y: auto; 
+            white-space: pre-wrap; display: none; border: 1px solid var(--border-glass); 
+        }
+        .log-box.show { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        #toast { 
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            background: var(--primary); color: white; padding: 12px 25px; 
+            border-radius: 30px; font-size: 0.85rem; font-weight: 700; 
+            opacity: 0; pointer-events: none; transition: 0.3s ease; z-index: 100;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        #toast.show { opacity: 1; bottom: 45px; }
     </style>
 </head>
 <body>
@@ -200,18 +279,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="ctrl-area">
         <div id="btn-wrapper">
-            <button class="btn-main btn-connect" disabled>Loading...</button>
+            <button class="btn-main btn-connect" disabled>Connecting...</button>
         </div>
     </div>
 
     <div id="auth-container" class="auth-box hidden">
-        <div class="auth-head"><span>🔑</span> Authentication</div>
+        <div class="auth-head">🔑 Authentication</div>
         
         <?php if (isset($authUrl) && !empty($authUrl)): ?>
             <div class="term" onclick="copyText(this)"><?= htmlspecialchars($authUrl) ?></div>
-            <div style="text-align:center; font-size:0.75rem; color:var(--succ); margin-top:8px;">Link Generated! Click to Copy</div>
+            <div style="text-align:center; font-size:0.75rem; color:var(--succ); margin-top:10px; font-weight: 700;">Link Generated! Click to Copy</div>
         <?php else: ?>
-            <div style="font-size:0.85rem; color:var(--sub); margin-bottom:10px;">Device needs authentication.</div>
+            <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:15px; font-weight: 500;">Device requires authentication to join network.</div>
             <form method="POST">
                 <button type="submit" name="action" value="get_auth" class="term-btn">GENERATE LOGIN URL</button>
             </form>
@@ -219,13 +298,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <div class="log-container">
-        <span class="log-toggle" onclick="toggleLog()">Show/Hide System Logs</span>
-        <div id="log-content" class="log-box">Loading logs...</div>
+        <span class="log-toggle" onclick="toggleLog()">Show System Logs</span>
+        <div id="log-content" class="log-box">Loading console logs...</div>
     </div>
 
     <div id="logout-container" class="hidden">
         <form method="POST">
-            <button type="submit" name="action" value="logout" class="btn-logout" onclick="return confirm('Disconnect & Logout?')">Logout from Network</button>
+            <button type="submit" name="action" value="logout" class="btn-logout" onclick="return confirm('Disconnect and logout from Tailscale?')">Logout from Network</button>
         </form>
     </div>
 
@@ -243,14 +322,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ta.select();
             document.execCommand("copy");
             document.body.removeChild(ta);
-            msg("Link Copied!");
+            msg("Auth Link Copied!");
         }
 
         function toggleLog() {
-            document.getElementById('log-content').classList.toggle('show');
+            const log = document.getElementById('log-content');
+            log.classList.toggle('show');
+            const toggle = document.querySelector('.log-toggle');
+            toggle.innerText = log.classList.contains('show') ? "Hide System Logs" : "Show System Logs";
         }
 
-        // --- AJAX POLLING ---
         function updateDashboard() {
             const fd = new FormData();
             fd.append('action', 'get_status');
@@ -267,25 +348,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 document.getElementById('ip-text').innerText = d.ip_display;
                 document.getElementById('status-desc').innerText = d.desc;
 
-                // Update Log Box
                 document.getElementById('log-content').innerText = d.log_data;
 
                 const btnWrap = document.getElementById('btn-wrapper');
                 if (d.is_connected) {
-                    btnWrap.innerHTML = `<button onclick="toggleTailscale('down')" class="btn-main btn-stop"><span>⏹</span> Stop Service</button>`;
+                    btnWrap.innerHTML = `<button onclick="toggleTailscale('down')" class="btn-main btn-stop">⏹ Stop Service</button>`;
                 } else {
-                    btnWrap.innerHTML = `<button onclick="toggleTailscale('up')" class="btn-main btn-connect"><span>🚀</span> Connect Tailscale</button>`;
+                    btnWrap.innerHTML = `<button onclick="toggleTailscale('up')" class="btn-main btn-connect">🚀 Connect Network</button>`;
                 }
 
                 const showAuth = (!d.is_connected && !d.is_stopped);
                 document.getElementById('auth-container').classList.toggle('hidden', !showAuth);
                 document.getElementById('logout-container').classList.toggle('hidden', !d.is_connected);
             })
-            .catch(e => console.log("Polling error:", e));
+            .catch(e => console.log("Status check failed"));
         }
 
         function toggleTailscale(state) {
-            msg(state === 'up' ? "Starting..." : "Stopping...");
+            msg(state === 'up' ? "Starting Service..." : "Stopping Service...");
             const fd = new FormData(); 
             fd.append('action', 'set_state'); 
             fd.append('state', state);
@@ -299,8 +379,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         updateDashboard();
-        setInterval(updateDashboard, 3000); // Update setiap 3 detik
+        setInterval(updateDashboard, 4000); 
     </script>
-
 </body>
 </html>

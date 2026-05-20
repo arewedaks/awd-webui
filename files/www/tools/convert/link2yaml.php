@@ -1,10 +1,10 @@
 <?php
 $save_path = '/data/adb/box/clash/proxy_provider/AKUN-VPN.yaml';
 
-// --- DEFINISI VARIABEL YANG BENAR ---
+// --- DEFINISI VARIABEL ---
 $php_bin = PHP_BINARY;
 $backend_script = __DIR__ . "/backend.php"; 
-// ------------------------------------
+// --------------------------
 
 $result = "";
 $message = "";
@@ -15,7 +15,6 @@ $edit_target_name = "";
 $account_list = [];
 $current_file_content = ""; 
 
-// Baca daftar akun
 if (file_exists($save_path)) {
     $current_file_content = file_get_contents($save_path);
     preg_match_all('/- name:\s*(.*)/', $current_file_content, $matches);
@@ -51,14 +50,14 @@ if (isset($_POST['process_and_save'])) {
 
             if ($final_cleaned !== null && strlen(trim($final_cleaned)) >= 8) {
                 file_put_contents($save_path, $final_cleaned);
-                $message = "Sukses! Akun disimpan dengan format rapi.";
+                $message = "Sukses! Akun disimpan.";
                 $raw_link = "";
                 header("Refresh:1"); 
             } else {
-                $message = "Gagal memproses susunan file.";
+                $message = "Gagal memproses file.";
             }
         } else {
-            $message = "Gagal. Format tidak valid atau backend error.";
+            $message = "Gagal. Format tidak valid.";
         }
     }
 }
@@ -82,14 +81,13 @@ if (isset($_POST['delete_account_direct'])) {
     }
 }
 
-// 3. PROSES GET (UNTUK EDIT)
+// 3. PROSES GET (EDIT)
 if (isset($_POST['account_selector'])) {
     $target_name = $_POST['account_selector'];
     if (!empty($target_name) && file_exists($save_path)) {
         $current_content = file_get_contents($save_path);
         $escaped_content = escapeshellarg($current_content);
         $escaped_name = escapeshellarg($target_name);
-
         $command = "$php_bin $backend_script get $escaped_content $escaped_name 2>&1";
         $fetched_content = shell_exec($command);
         
@@ -101,7 +99,7 @@ if (isset($_POST['account_selector'])) {
     }
 }
 
-// 4. PROSES REPLACE (SIMPAN EDITAN)
+// 4. PROSES UPDATE
 if (isset($_POST['update_single_account'])) {
     $old_name = $_POST['target_old_name'];
     $new_content_block = $_POST['edited_account_content'];
@@ -109,7 +107,6 @@ if (isset($_POST['update_single_account'])) {
     if (!empty($old_name) && !empty($new_content_block) && file_exists($save_path)) {
         $current_content = file_get_contents($save_path);
         $new_content_block = str_replace("\r\n", "\n", $new_content_block);
-
         $escaped_content = escapeshellarg($current_content);
         $escaped_name = escapeshellarg($old_name);
         $escaped_new_block = escapeshellarg($new_content_block);
@@ -119,25 +116,23 @@ if (isset($_POST['update_single_account'])) {
 
         if ($updated_full_file !== null && strlen(trim($updated_full_file)) >= 8) {
             file_put_contents($save_path, $updated_full_file);
-            $message = "Akun berhasil diperbarui!";
+            $message = "Akun diperbarui!";
             $edit_mode = false;
             header("Refresh:1");
         }
     }
 }
 
-// 5. PROSES CLEAN MANUAL
+// 5. PROSES CLEAN
 if (isset($_POST['clean_file'])) {
     if (file_exists($save_path)) {
         $current_content = file_get_contents($save_path);
         $escaped_content = escapeshellarg($current_content);
-        
         $command = "$php_bin $backend_script clean $escaped_content 2>&1";
         $cleaned_content = shell_exec($command);
-        
         if ($cleaned_content !== null && strlen(trim($cleaned_content)) >= 8) {
             file_put_contents($save_path, $cleaned_content);
-            $message = "File berhasil dirapikan secara ketat.";
+            $message = "Format dirapikan.";
             header("Refresh:1");
         }
     }
@@ -147,68 +142,191 @@ if (isset($_POST['clean_file'])) {
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Box Magisk Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Account Editor</title>
     <style>
+        /* --- TEMA VISIONOS CHOCOLATE GLASSMORPHISM (LOCKED) --- */
         :root {
-            --bg: #f8f9fa; --card: #ffffff; --text: #2d3748; --sub: #718096; --border: #e2e8f0;
-            --pri: #fb8c00; --pri-soft: rgba(251, 140, 0, 0.1); --code-bg: #f1f5f9;
-            --success: #22c55e; --danger: #ef4444; --rad: 12px; --shd: 0 4px 6px -1px rgba(0,0,0,0.05);
+            --primary: #B87333; 
+            --primary-hover: #8B5A2B;
+            --accent: rgba(184, 115, 51, 0.15);
+            --border-glass: rgba(255, 255, 255, 0.4);
+            --blur-val: blur(5px);
+            --card-bg: rgba(255, 248, 240, 0.15);
+            --text-main: #3E2A1C;
+            --text-sub: #7A5C43;
+            --inp-bg: rgba(62, 42, 28, 0.05);
+            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
         }
+
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --sub: #a0a0a0; --border: #2d2d2d;
-                --pri-soft: rgba(251, 140, 0, 0.15); --code-bg: #000;
-                --shd: 0 4px 6px rgba(0,0,0,0.4);
+                --card-bg: rgba(10, 5, 2, 0.2);
+                --text-main: #FDF5E6;
+                --text-sub: #C0B2A2;
+                --inp-bg: rgba(253, 245, 230, 0.08);
+                --border-glass: rgba(255, 255, 255, 0.12);
+                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
-        
-        .con { width: 100%; max-width: 800px; background: var(--card); padding: 25px; border-radius: var(--rad); border: 1px solid var(--border); box-shadow: var(--shd); }
-        h2 { text-align: left; color: var(--pri); margin: 0 0 5px; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; }
-        .sub-t { text-align: left; color: var(--sub); font-size: 0.8rem; font-weight: 600; margin-bottom: 20px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px; width: 100%; }
-        
-        /* UPDATE: white-space diubah ke pre-wrap agar text panjang otomatis turun */
-        textarea { width: 100%; background: var(--code-bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 8px; font-family: 'SF Mono', 'Segoe UI Mono', 'Roboto Mono', 'Consolas', 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; letter-spacing: 0.3px; resize: none; min-height: 100px; max-height: 350px; overflow-y: auto; transition: height 0.1s ease; white-space: pre-wrap; }
-        textarea:focus { border-color: var(--pri); }
 
-        .btn-grp { display: flex; gap: 10px; margin-top: 15px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: 0.2s; font-size: 0.9rem; color: #fff; }
-        button:active { transform: scale(0.98); }
-        .btn-pri { background: var(--pri); color: #000; }
-        .btn-sec { background: var(--border); color: var(--text); }
-        .btn-dan { background: var(--danger); }
-        .btn-suc { background: var(--success); color: #000; }
-
-        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600; font-size: 0.9rem; }
-        .alert.s { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
-        .alert.e { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
-
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 400px; overflow-y: auto; padding: 2px; }
-        @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-
-        .item { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 38px; align-items: center; }
-        .item-n { flex: 1; background: transparent; color: var(--text); text-align: left; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 0; font-family: 'SF Mono', 'Roboto Mono', monospace; font-size: 0.8rem; height: 100%; border: none; }
-        .item-n:hover { color: var(--pri); background: var(--pri-soft); }
-        .item-d { width: 26px; flex: none; background: transparent; color: var(--pri); border-left: 1px solid var(--border); display: flex; align-items: center; justify-content: center; border-radius: 0; font-size: 0.9rem; height: 100%; padding: 0; }
-        .item-d:hover { background: var(--pri-soft); color: #fff; }
-
-        .sep { margin-top: 25px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
         
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 999; display: flex; flex-direction: column; padding: 20px; animation: slide 0.3s; }
-        @keyframes slide { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
-        .modal-act { display: flex; gap: 10px; align-items: center; }
-        .modal-t { font-size: 1.1rem; font-weight: 700; color: var(--pri); }
-        .modal-area { flex-grow: 1; margin-bottom: 15px; font-size: 0.9rem; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
+            background: transparent !important; 
+            color: var(--text-main); 
+            padding: 15px; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .con { 
+            background: var(--card-bg); 
+            backdrop-filter: var(--blur-val); 
+            -webkit-backdrop-filter: var(--blur-val);
+            padding: 25px; 
+            border-radius: 24px; 
+            border: 1px solid var(--border-glass); 
+            box-shadow: var(--shadow); 
+        }
+
+        h2 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .sub-t { font-size: 0.75rem; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1px dashed rgba(122,92,67,0.2); padding-bottom: 15px; margin-bottom: 20px; display: block; }
+
+        /* --- FORM ELEMENTS --- */
+        textarea { 
+            width: 100%; 
+            background: var(--inp-bg); 
+            border: 1px solid var(--border-glass); 
+            color: var(--text-main); 
+            padding: 15px; 
+            border-radius: 14px; 
+            font-family: 'SF Mono', monospace; 
+            font-size: 0.85rem; 
+            line-height: 1.5; 
+            resize: none; 
+            margin-bottom: 15px;
+            backdrop-filter: blur(2px);
+        }
+        textarea:focus { border-color: var(--primary); }
+
+        .btn-grp { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { 
+            flex: 1; 
+            min-width: 120px;
+            padding: 14px; 
+            border: 1px solid var(--border-glass); 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            font-size: 0.9rem; 
+            transition: 0.3s ease; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-pri { background: var(--primary); color: #fff; box-shadow: 0 4px 15px rgba(184, 115, 51, 0.2); }
+        .btn-pri:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .btn-sec { background: var(--inp-bg); color: var(--text-main); }
+        .btn-sec:hover { background: rgba(255,255,255,0.1); }
+
+        /* --- GRID ACCOUNTS --- */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 12px; 
+            max-height: 400px; 
+            overflow-y: auto; 
+            padding: 5px;
+            margin-top: 20px;
+        }
+
+        .item { 
+            display: flex; 
+            background: var(--inp-bg); 
+            border: 1px solid var(--border-glass); 
+            border-radius: 12px; 
+            overflow: hidden; 
+            height: 42px; 
+            align-items: center; 
+            transition: 0.2s;
+        }
+        .item:hover { border-color: var(--primary); transform: translateX(3px); }
+
+        .item-n { 
+            flex: 1; 
+            background: transparent; 
+            color: var(--text-main); 
+            text-align: left; 
+            padding: 0 15px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            font-family: 'SF Mono', monospace; 
+            font-size: 0.8rem; 
+            height: 100%; 
+            border: none; 
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .item-d { 
+            width: 40px; 
+            background: rgba(239, 68, 68, 0.1); 
+            color: #ef4444; 
+            border: none;
+            border-left: 1px solid var(--border-glass); 
+            font-size: 1.2rem; 
+            height: 100%; 
+            cursor: pointer;
+        }
+        .item-d:hover { background: #ef4444; color: #fff; }
+
+        .alert { 
+            padding: 12px 20px; 
+            border-radius: 12px; 
+            margin-bottom: 20px; 
+            text-align: center; 
+            font-weight: 700; 
+            font-size: 0.85rem; 
+            backdrop-filter: blur(10px);
+        }
+        .alert.s { background: rgba(52, 199, 89, 0.15); color: #32d74b; border: 1px solid rgba(52,199,89,0.3); }
+        .alert.e { background: rgba(239, 68, 68, 0.15); color: #ff453a; border: 1px solid rgba(239,68,68,0.3); }
+
+        /* --- MODAL GLASS --- */
+        .modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(30, 18, 10, 0.6); 
+            backdrop-filter: blur(15px); 
+            z-index: 999; display: flex; flex-direction: column; padding: 20px; 
+            animation: slide 0.3s ease-out; 
+        }
+        @keyframes slide { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Menendang satu ke kiri, satu ke kanan */
+            padding: 12px 20px;
+            background: var(--log-head); /* Opsional: sedikit lebih gelap agar judul terbaca */
+        }
         
-        .btn-head { background: var(--border); width: auto; padding: 8px 16px; font-size: 0.8rem; flex: none; display: flex; align-items: center; gap: 5px; color: var(--text); }
-        .btn-head-s { background: var(--pri); color: #000; }
+        .modal-head button {
+            flex: none !important;     /* Melarang tombol melebar */
+            width: auto !important;    /* Lebar sesuai teks */
+            padding: 8px 16px !important;
+            font-size: 0.8rem !important;
+        }
         
-        /* Iframe Styles */
-        .iframe-container { flex-grow: 1; width: 100%; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
-        iframe { width: 100%; height: 100%; border: none; }
+        .modal-t {
+            flex: none !important;
+            text-align: right;        /* Memastikan teks judul rata kanan */
+        }
+        .modal-t { font-size: 1.1rem; font-weight: 800; color: #fff; text-transform: uppercase; }
+        .modal-area { flex-grow: 1; background: rgba(0,0,0,0.3); color: #FDF5E6; border: 1px solid rgba(255,255,255,0.1); }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -217,13 +335,13 @@ if (isset($_POST['clean_file'])) {
 <div class="modal">
     <form method="post" style="display:flex;flex-direction:column;height:100%">
         <div class="modal-head">
-            <div class="modal-act">
-                <button type="button" class="btn-head" onclick="location.href=location.pathname">← Back</button>
-                <button type="submit" name="update_single_account" class="btn-head btn-head-s">Save</button>
+            <div class="btn-grp" style="flex:none">
+                <button type="button" class="btn-sec" style="min-width:80px" onclick="location.href=location.pathname">Back</button>
+                <button type="submit" name="update_single_account" class="btn-pri" style="min-width:80px">Save</button>
             </div>
-            <span class="modal-t">Edit Account</span>
+            <span class="modal-t">Edit Proxy</span>
         </div>
-        <label>Target: <?php echo htmlspecialchars($edit_target_name); ?></label>
+        <div style="margin-bottom:10px; font-size:0.8rem; font-weight:700; color:var(--primary)">TARGET: <?php echo htmlspecialchars($edit_target_name); ?></div>
         <textarea name="edited_account_content" class="modal-area"><?php echo htmlspecialchars($edit_content); ?></textarea>
         <input type="hidden" name="target_old_name" value="<?php echo htmlspecialchars($edit_target_name); ?>">
     </form>
@@ -231,80 +349,63 @@ if (isset($_POST['clean_file'])) {
 <?php endif; ?>
 
 <div id="advModal" class="modal" style="display:none; padding: 0;">
-    <div class="modal-head" style="padding: 15px 20px; margin-bottom: 0; background: var(--bg); border-bottom: 1px solid var(--border);">
-        <div class="modal-act">
-            <button type="button" class="btn-head" onclick="closeAdvEditor()">← Back</button>
-        </div>
+    <div class="modal-head">
+        <button type="button" class="btn-sec" onclick="closeAdvEditor()">Close</button>
         <span class="modal-t">Advanced Editor</span>
     </div>
-    <div class="iframe-container" style="border-radius: 0; border: none;">
-        <iframe id="tinyFrame" src=""></iframe>
-    </div>
+    <iframe id="tinyFrame" style="flex-grow:1; border:none; background:transparent" src=""></iframe>
 </div>
 
 <div class="con">
     <h2>Akun Editor</h2>
-    <div class="sub-t">by arewedaks</div>
+    <span class="sub-t">Great yaml editor</span>
 
     <?php if ($message): ?>
-        <div class="alert <?php echo strpos($message, 'Sukses')!==false || strpos($message, 'berhasil')!==false ? 's' : 'e'; ?>">
+        <div class="alert <?php echo (strpos($message, 'Sukses')!==false || strpos($message, 'berhasil')!==false) ? 's' : 'e'; ?>">
             <?php echo $message; ?>
         </div>
     <?php endif; ?>
 
-    <div>
-        <form method="post">
-            <textarea id="inLink" name="link" rows="3" class="auto-resize" placeholder="Paste Vmess/Trojan/Vless link here..."><?php echo htmlspecialchars($raw_link); ?></textarea>
-            <div class="btn-grp">
-                <button id="btnAction" type="submit" name="process_and_save" class="btn-pri">Convert</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="sep"></div>
+    <form method="post">
+        <textarea id="inLink" name="link" rows="3" placeholder="Paste link Vmess/Trojan/Vless di sini..."><?php echo htmlspecialchars($raw_link); ?></textarea>
+        <div class="btn-grp">
+            <button id="btnAction" type="submit" name="process_and_save" class="btn-pri">Convert</button>
+        </div>
+    </form>
 
     <form method="post">
         <?php if (!empty($account_list)): ?>
             <div class="grid">
                 <?php foreach ($account_list as $acc): $acc=trim($acc); ?>
                     <div class="item">
-                        <button type="submit" name="account_selector" value="<?php echo htmlspecialchars($acc); ?>" class="item-n" title="<?php echo htmlspecialchars($acc); ?>">
+                        <button type="submit" name="account_selector" value="<?php echo htmlspecialchars($acc); ?>" class="item-n">
                             <?php echo htmlspecialchars($acc); ?>
                         </button>
-                        <button type="submit" name="delete_account_direct" value="<?php echo htmlspecialchars($acc); ?>" class="item-d" onclick="return confirm('Delete: <?php echo htmlspecialchars($acc); ?>?');" title="Delete">
+                        <button type="submit" name="delete_account_direct" value="<?php echo htmlspecialchars($acc); ?>" class="item-d" onclick="return confirm('Hapus akun: <?php echo htmlspecialchars($acc); ?>?');">
                             &times;
                         </button>
                     </div>
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <div style="text-align:center;padding:20px;border:1px dashed var(--border);color:var(--sub);border-radius:8px;font-style:italic">No accounts found in file.</div>
+            <div style="text-align:center;padding:30px;border:1px dashed var(--border-glass);color:var(--text-sub);border-radius:14px;font-style:italic;margin-top:20px">No accounts found.</div>
         <?php endif; ?>
     </form>
 
     <div class="btn-grp" style="margin-top:25px">
         <form method="post" style="flex:1"><button type="submit" name="clean_file" class="btn-sec" style="width:100%">Fix Format</button></form>
-        <button type="button" class="btn-sec" onclick="openAdvEditor()">Advanced Editor</button>
+        <button type="button" class="btn-sec" style="flex:1" onclick="openAdvEditor()">Full Editor</button>
     </div>
 </div>
 
 <script>
-    // FUNGSI UNTUK MODAL IFRAME ADVANCED EDITOR
     function openAdvEditor() {
         document.getElementById('advModal').style.display = 'flex';
-        // Set URL Tiny File Manager ke dalam src iframe
         document.getElementById('tinyFrame').src = '/tiny/index.php?p=data/adb/box/clash/proxy_provider&edit=AKUN-VPN.yaml';
     }
-
     function closeAdvEditor() {
         document.getElementById('advModal').style.display = 'none';
-        // Kosongkan iframe untuk menghemat resource memori saat ditutup
         document.getElementById('tinyFrame').src = '';
-    }
-
-    function autoResize() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
     }
 
     const ta = document.getElementById('inLink');
@@ -313,18 +414,8 @@ if (isset($_POST['clean_file'])) {
     function checkInput() {
         if (!ta || !btn) return;
         const v = ta.value.trim();
-        if (v.startsWith('- name:') || v.startsWith('proxies:')) {
-            btn.innerHTML = 'Save';
-        } else {
-            btn.innerHTML = 'Convert';
-        }
+        btn.innerHTML = (v.startsWith('- name:') || v.startsWith('proxies:')) ? 'Save' : 'Convert';
     }
-
-    document.querySelectorAll('textarea').forEach(t => {
-        t.addEventListener('input', autoResize);
-        t.style.height = 'auto';
-        t.style.height = (t.scrollHeight) + 'px';
-    });
 
     if (ta) {
         ta.addEventListener('input', checkInput);
