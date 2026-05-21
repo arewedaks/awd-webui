@@ -61,6 +61,238 @@ if (isset($_REQUEST['api'])) {
         }
         exit;
     }
+
+    // ===================== //
+    // MANUAL UPDATE API     //
+    // ===================== //
+
+    // Verifikasi update.zip dari URL atau path lokal
+    if ($act === 'verify_update') {
+        header('Content-Type: application/json');
+        $source = $_POST['source'] ?? ''; // 'url' atau 'local'
+        $path = $_POST['path'] ?? '';
+
+        if (empty($path)) {
+            echo json_encode(['status' => 'error', 'msg' => 'Path tidak boleh kosong.']);
+            exit;
+        }
+
+        $tmpFile = '/sdcard/update_verify_' . uniqid() . '.zip';
+
+        // Download dari URL jika source=url
+        if ($source === 'url') {
+            if (!filter_var($path, FILTER_VALIDATE_URL)) {
+                echo json_encode(['status' => 'error', 'msg' => 'URL tidak valid.']);
+                exit;
+            }
+            $path = escapeshellarg($path);
+            $cmd = "curl -k -L -A \"Mozilla/5.0\" -o \"$tmpFile\" $path 2>&1";
+            $dlResult = shell_exec($cmd);
+            if (!file_exists($tmpFile) || filesize($tmpFile) < 1000) {
+                @unlink($tmpFile);
+                echo json_encode(['status' => 'error', 'msg' => 'Download gagal atau file terlalu kecil.']);
+                exit;
+            }
+            $zipPath = $tmpFile;
+        } else {
+            // Path lokal
+            $zipPath = realpath($path);
+            if (!$zipPath || !file_exists($zipPath)) {
+                echo json_encode(['status' => 'error', 'msg' => 'File tidak ditemukan: ' . basename($path)]);
+                exit;
+            }
+        }
+
+        // Verifikasi ZIP integrity
+        $zip = new ZipArchive();
+        $openResult = $zip->open($zipPath);
+        if ($openResult !== true) {
+            @unlink($tmpFile);
+            echo json_encode(['status' => 'error', 'msg' => 'File bukan ZIP valid atau corrupted.']);
+            exit;
+        }
+
+        // Cek struktur update.zip yang diharapkan
+        $requiredFiles = ['META-INF/com/google/android/updater-script'];
+        $foundFiles = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $foundFiles[] = $zip->getNameIndex($i);
+        }
+
+        // Cek apakah ada files/scripts di root atau di dalam folder
+        $hasValidStructure = false;
+        $extractBase = '';
+
+        // Mode 1: Files langsung di root zip
+        if (in_array('files/version.php', $foundFiles) || in_array('scripts/', $foundFiles) ||
+            in_array('www/version.php', $foundFiles) || in_array('install.sh', $foundFiles)) {
+            $hasValidStructure = true;
+            $extractBase = '';
+        }
+
+        // Mode 2: Files di dalam folder (misal update.zip/files/)
+        if (!$hasValidStructure) {
+            foreach ($foundFiles as $f) {
+                if (preg_match('/^(files|scripts|www)\/.+/', $f) || preg_match('/^(install\.sh|META-INF)/', $f)) {
+                    $hasValidStructure = true;
+                    $extractBase = '';
+                    break;
+                }
+            }
+        }
+
+        // Mode 3: Struktur module (files/ di dalam folder bernama seperti module)
+        if (!$hasValidStructure) {
+            $dirs = [];
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = $zip->getNameIndex($i);
+                if (preg_match('/^([^\/]+)\//', $name, $m)) $dirs[$m[1]] = true;
+            }
+            foreach (array_keys($dirs) as $dir) {
+                if (in_array($dir . '/files/', $foundFiles) || in_array($dir . '/install.sh', $foundFiles)) {
+                    $hasValidStructure = true;
+                    $extractBase = $dir . '/';
+                    break;
+                }
+            }
+        }
+
+        $zip->close();
+
+        if (!$hasValidStructure) {
+            @unlink($tmpFile);
+            echo json_encode(['status' => 'error', 'msg' => 'File bukan update yang valid. Struktur ZIP tidak sesuai.']);
+            exit;
+        }
+
+        // Ekstrak sementara untuk cek versi
+        $verifyDir = '/sdcard/update_verify_' . uniqid();
+        mkdir($verifyDir, 0755, true);
+        $zip = new ZipArchive();
+        $zip->open($zipPath);
+        $zip->extractTo($verifyDir);
+        $zip->close();
+
+        // Cari version.php di berbagai lokasi
+        $updateVer = null;
+        $versionPaths = [
+            $extractBase . 'files/version.php',
+            $extractBase . 'www/version.php',
+            'files/version.php',
+            'www/version.php'
+        ];
+        foreach ($versionPaths as $vp) {
+            $fullPath = $verifyDir . '/' . $vp;
+            if (file_exists($fullPath)) {
+                $content = file_get_contents($fullPath);
+                if (preg_match("/define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"](\d+\.\d+(?:\.\d+)?)['\"]/", $content, $m)) {
+                    $updateVer = $m[1];
+                    break;
+                }
+            }
+        }
+
+        // Bandingkan versi
+        $canInstall = false;
+        $verMsg = 'Unknown';
+        if ($updateVer) {
+            $verMsg = $updateVer;
+            $canInstall = version_compare($updateVer, CURRENT_VERSION, '>');
+        } else {
+            // Jika tidak ada version.php, tetap izinkan (mungkin full update)
+            $canInstall = true;
+            $verMsg = 'Full Package';
+        }
+
+        // Cleanup
+        shell_exec("rm -rf " . escapeshellarg($verifyDir));
+        @unlink($tmpFile);
+
+        echo json_encode([
+            'status' => 'ok',
+            'valid' => $canInstall,
+            'ver' => $verMsg,
+            'msg' => $canInstall
+                ? 'Update valid dan bisa diinstall.'
+                : 'Versi update (' . $verMsg . ') tidak lebih baru dari versi saat ini (' . CURRENT_VERSION . ').'
+        ]);
+        exit;
+    }
+
+    // Install dari file lokal yang sudah di-verify
+    if ($act === 'update_local') {
+        header('Content-Type: application/json');
+        $path = $_POST['path'] ?? '';
+        $verified = $_POST['verified'] ?? 'false';
+        $ver = $_POST['ver'] ?? 'unknown';
+
+        if ($verified !== 'true') {
+            echo json_encode(['status' => 'error', 'msg' => 'Update belum diverifikasi.']);
+            exit;
+        }
+
+        $zipPath = realpath($path);
+        if (!$zipPath || !file_exists($zipPath)) {
+            echo json_encode(['status' => 'error', 'msg' => 'File tidak ditemukan.']);
+            exit;
+        }
+
+        // Copy ke lokasi standar dan jalankan
+        $cmd = "sh /data/adb/php8/scripts/process_update.sh " . escapeshellarg($zipPath);
+        $output = shell_exec($cmd);
+        $exitCode = 0;
+
+        echo json_encode([
+            'status' => 'ok',
+            'msg' => 'Instalasi selesai.',
+            'output' => trim($output)
+        ]);
+        exit;
+    }
+
+    // Install dari file lokal via SSE stream (untuk progress real-time)
+    if ($act === 'update_local_stream') {
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        if(function_exists('apache_setenv')) @apache_setenv('no-gzip', 1);
+        @ini_set('zlib.output_compression', 0);
+        @ini_set('implicit_flush', 1);
+        for ($i = 0; $i < ob_get_level(); $i++) ob_end_flush();
+        ob_implicit_flush(1);
+
+        $path = $_GET['path'] ?? '';
+
+        if (empty($path)) {
+            echo "data: " . json_encode(['msg' => 'Path tidak boleh kosong.', 'pct' => null]) . "\n\n";
+            flush();
+            echo "data: end\n\n";
+            flush();
+            exit;
+        }
+
+        $script = '/data/adb/php8/scripts/process_update.sh';
+        $cmd = "su -c sh " . escapeshellarg($script) . " " . escapeshellarg($path) . " local 2>&1";
+
+        $proc = popen($cmd, 'r');
+        if ($proc) {
+            while (!feof($proc)) {
+                $line = fgets($proc);
+                if ($line) {
+                    $cleanLine = trim($line);
+                    $pct = null;
+                    if (preg_match('/(\d{1,3})%/', $cleanLine, $matches)) $pct = intval($matches[1]);
+                    echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct]) . "\n\n";
+                    flush();
+                }
+            }
+            pclose($proc);
+        }
+        echo "data: end\n\n";
+        flush();
+        exit;
+    }
+
     if ($act === 'update_stream') {
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');
@@ -71,8 +303,10 @@ if (isset($_REQUEST['api'])) {
         for ($i = 0; $i < ob_get_level(); $i++) ob_end_flush();
         ob_implicit_flush(1);
         $url = $_GET['url'] ?? '';
+        $type = $_GET['type'] ?? 'url';
         $script = '/data/adb/php8/scripts/process_update.sh';
-        $proc = popen("su -c sh \"$script\" \"$url\" 2>&1", 'r');
+        $cmd = "su -c sh " . escapeshellarg($script) . " " . escapeshellarg($url) . " " . escapeshellarg($type) . " 2>&1";
+        $proc = popen($cmd, 'r');
         if ($proc) {
             while (!feof($proc)) {
                 $line = fgets($proc);
@@ -149,6 +383,14 @@ if (isset($_REQUEST['api'])) {
             text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(184, 115, 51, 0.25); display: none; 
         }
         .btn:active { transform: scale(0.97); }
+        .btn-cancel {
+            background: transparent;
+            color: var(--text-sub);
+            border: 2px solid var(--border);
+            margin-top: 10px;
+            box-shadow: none;
+        }
+        .btn-cancel:active { background: rgba(0,0,0,0.05); }
         .ldr { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 15px; }
         .sp { width: 22px; height: 22px; border: 3px solid rgba(0,0,0,0.1); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -157,6 +399,291 @@ if (isset($_REQUEST['api'])) {
         .pg-head { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-sub); margin-bottom: 8px; font-weight: 800; text-transform: uppercase; }
         .pg-track { width: 100%; height: 12px; background: rgba(0,0,0,0.1); border-radius: 20px; overflow: hidden; border: 1px solid var(--border); }
         .pg-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; border-radius: 20px; }
+
+        /* Manual Update Section */
+        .manual-section {
+            margin-top: 20px;
+            border-top: 1px dashed rgba(122, 92, 67, 0.2);
+            padding-top: 20px;
+        }
+        .manual-title {
+            font-size: 0.7rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .manual-title::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 4px;
+            display: inline-flex;
+        }
+        .tab-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--border);
+            background: transparent;
+            color: var(--text-sub);
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .input-group {
+            margin-bottom: 12px;
+        }
+        .input-label {
+            font-size: 0.65rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.05);
+            color: var(--text-main);
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        .input-field:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .input-field::placeholder {
+            color: var(--text-sub);
+            font-weight: 400;
+        }
+        .file-drop {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 12px;
+        }
+        .file-drop:hover, .file-drop.dragover {
+            border-color: var(--primary);
+            background: var(--accent);
+        }
+        .file-drop-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .file-drop-text {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            font-weight: 600;
+        }
+        .file-drop-hint {
+            font-size: 0.65rem;
+            color: var(--text-sub);
+            margin-top: 5px;
+            opacity: 0.7;
+        }
+        .selected-file {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+        .selected-file-icon {
+            font-size: 1.5rem;
+        }
+        .selected-file-info {
+            flex: 1;
+        }
+        .selected-file-name {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            word-break: break-all;
+        }
+        .selected-file-size {
+            font-size: 0.65rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        .selected-file-remove {
+            background: var(--dang);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-manual {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 14px 20px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.3s;
+        }
+        .btn-manual:hover {
+            opacity: 0.9;
+        }
+        .btn-manual:active {
+            transform: scale(0.97);
+        }
+        .btn-manual:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .verify-result {
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: none;
+        }
+        .verify-result.succ {
+            display: block;
+            background: rgba(50, 215, 75, 0.15);
+            color: var(--suc);
+            border: 1px solid var(--suc);
+        }
+        .verify-result.err {
+            display: block;
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--dang);
+            border: 1px solid var(--dang);
+        }
+        .install-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            font-size: 0.75rem;
+            color: var(--text-sub);
+        }
+        .step-num {
+            width: 24px;
+            height: 24px;
+            background: var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.7rem;
+            color: var(--text-main);
+        }
+        .step-done { background: var(--suc); color: white; }
+        .step-active { background: var(--primary); color: white; animation: pulse 1.5s infinite; }
+        .progress-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            display: none;
+        }
+        .progress-overlay.show { display: flex; }
+        .progress-modal {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur-val);
+            -webkit-backdrop-filter: var(--blur-val);
+            border-radius: 24px;
+            padding: 30px;
+            width: 90%;
+            max-width: 350px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .progress-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        .progress-text {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 15px;
+        }
+        .progress-bar-wrap {
+            width: 100%;
+            height: 14px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+        .progress-bar-inner {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 20px;
+        }
+        .progress-pct {
+            font-size: 1.2rem;
+            font-weight: 800;
+            font-family: 'SF Mono', monospace;
+            color: var(--primary);
+        }
+        .progress-steps {
+            margin-top: 20px;
+        }
+        @media (max-width: 400px) {
+            .con { padding: 20px; }
+            .ti { font-size: 1.1rem; }
+        }
     </style>
 </head>
 <body>
@@ -173,14 +700,101 @@ if (isset($_REQUEST['api'])) {
     <div id="area-act">
         <div class="ldr" id="ldr"><div class="sp"></div><span class="lt">Checking for updates...</span></div>
         <button class="btn" id="btn-up" onclick="startUpdate()">Install Package</button>
+        <button class="btn btn-cancel" id="btn-cn" onclick="cancelUpdate()" style="display:none">Cancel Installation</button>
         <div class="pg-wrap" id="pg-box">
             <div class="pg-head"><span id="pg-txt">Preparing...</span><span id="pg-pct">0%</span></div>
             <div class="pg-track"><div class="pg-bar" id="pg-in"></div></div>
         </div>
     </div>
+
+    <!-- Manual Update Section -->
+    <div class="manual-section">
+        <div class="manual-title">Manual Update</div>
+
+        <!-- Steps Indicator -->
+        <div class="progress-steps" id="manual-steps">
+            <div class="install-step" id="step1">
+                <div class="step-num" id="sn1">1</div>
+                <span>Pilih file atau URL update.zip</span>
+            </div>
+            <div class="install-step" id="step2">
+                <div class="step-num" id="sn2">2</div>
+                <span>Verifikasi package</span>
+            </div>
+            <div class="install-step" id="step3">
+                <div class="step-num" id="sn3">3</div>
+                <span>Install update</span>
+            </div>
+        </div>
+
+        <!-- Tab Selector -->
+        <div class="tab-group">
+            <button class="tab-btn active" id="tab-url" onclick="switchTab('url')">Dari URL</button>
+            <button class="tab-btn" id="tab-local" onclick="switchTab('local')">File Lokal</button>
+        </div>
+
+        <!-- URL Tab -->
+        <div class="tab-content active" id="content-url">
+            <div class="input-group">
+                <label class="input-label">Link update.zip</label>
+                <input type="url" class="input-field" id="update-url" placeholder="https://example.com/update.zip">
+            </div>
+            <button class="btn-manual" id="btn-verify-url" onclick="verifyManual('url')">
+                Verifikasi Update
+            </button>
+        </div>
+
+        <!-- Local File Tab -->
+        <div class="tab-content" id="content-local">
+            <input type="file" id="file-input" accept=".zip" style="display:none" onchange="handleFileSelect(event)">
+            <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
+                <div class="file-drop-icon">📦</div>
+                <div class="file-drop-text">Klik untuk pilih update.zip</div>
+                <div class="file-drop-hint">atau drag & drop file ke sini</div>
+            </div>
+            <div class="selected-file" id="file-info" style="display:none">
+                <div class="selected-file-icon">📁</div>
+                <div class="selected-file-info">
+                    <div class="selected-file-name" id="file-name">-</div>
+                    <div class="selected-file-size" id="file-size">-</div>
+                </div>
+                <button class="selected-file-remove" onclick="clearFile()">✕</button>
+            </div>
+            <button class="btn-manual" id="btn-verify-local" onclick="verifyManual('local')" disabled>
+                Verifikasi Update
+            </button>
+        </div>
+
+        <!-- Verify Result -->
+        <div class="verify-result" id="verify-result"></div>
+
+        <!-- Install Button (shown after successful verification) -->
+        <div id="manual-install-area" style="display:none; margin-top: 12px;">
+            <button class="btn-manual" id="btn-install-manual" onclick="installManual()">
+                ▶ Install Update Sekarang
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Overlay -->
+<div class="progress-overlay" id="progress-overlay">
+    <div class="progress-modal">
+        <div class="progress-icon" id="prog-icon">⏳</div>
+        <div class="progress-text" id="prog-text">Menginstal update...</div>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-inner" id="prog-bar"></div>
+        </div>
+        <div class="progress-pct" id="prog-pct">0%</div>
+        <div class="progress-steps" style="margin-top:15px" id="prog-steps">
+            <div class="install-step"><div class="step-num step-done" id="ps1">✓</div><span>Download/Load file</span></div>
+            <div class="install-step"><div class="step-num" id="ps2">2</div><span>Ekstrak file</span></div>
+            <div class="install-step"><div class="step-num" id="ps3">3</div><span>Install</span></div>
+        </div>
+    </div>
 </div>
 <script>
-let upUrl = ''; let es = null; let isFinished = false; 
+let upUrl = ''; let es = null; let isFinished = false; let isCancelled = false;
 function log(t, type='') {
     const box = document.getElementById('log-box');
     const d = document.createElement('div');
@@ -197,37 +811,57 @@ function check() {
                 document.getElementById('ver-new').classList.add('new');
                 document.getElementById('st-dot').className = 'dot on';
                 document.getElementById('btn-up').style.display = 'block';
-                upUrl = d.url; log("NEW UPDATE FOUND:\n" + d.log, 'suc');
+                upUrl = d.url; log("Update tersedia:\n" + d.log, 'suc');
             } else {
                 document.getElementById('st-dot').className = 'dot on';
-                log("System core is up to date.", 'suc');
+                log("Sistem sudah versi terbaru.", 'suc');
             }
         } else {
             document.getElementById('st-dot').className = 'dot off';
-            document.getElementById('ver-new').innerText = 'Error';
-            log("Tele-Engine: " + d.msg, 'err');
+            document.getElementById('ver-new').innerText = 'Gagal';
+            log("Update check gagal: " + d.msg, 'err');
         }
     }).catch(() => {
         document.getElementById('ldr').style.display = 'none';
         document.getElementById('st-dot').className = 'dot off';
-        log("Connection failure.", 'err');
+        log("Tidak dapat terhubung ke server.", 'err');
     });
 }
-function startUpdate() {
-    if(!confirm('Begin firmware installation?')) return;
+function cancelUpdate() {
+    if(!confirm('Batalkan proses instalasi?')) return;
+    isCancelled = true;
     if(es) es.close();
-    isFinished = false; 
+    log("Instalasi dibatalkan.", 'err');
+    document.getElementById('btn-cn').style.display = 'none';
+    document.getElementById('pg-box').style.display = 'none';
+    document.getElementById('st-dot').className = 'dot off';
+    setTimeout(() => {
+        document.getElementById('btn-up').style.display = 'block';
+    }, 1500);
+}
+function startUpdate() {
+    if (!upUrl || upUrl.trim() === '') {
+        log("URL paket tidak valid.", 'err');
+        return;
+    }
+    if(!confirm('Mulai instalasi pembaruan?')) return;
+    if(es) es.close();
+    isFinished = false; isCancelled = false;
     document.getElementById('btn-up').style.display = 'none';
+    document.getElementById('btn-cn').style.display = 'block';
     document.getElementById('pg-box').style.display = 'block';
     document.getElementById('st-dot').className = 'dot wait';
-    document.getElementById('log-box').innerHTML = ''; 
+    document.getElementById('log-box').innerHTML = '';
+    log("Memulai proses instalasi...");
     const bar = document.getElementById('pg-in'), pctTxt = document.getElementById('pg-pct'), statusTxt = document.getElementById('pg-txt');
     es = new EventSource('?api=update_stream&url=' + encodeURIComponent(upUrl));
     es.onmessage = function(e) {
+        if (isCancelled) return;
         if(e.data === 'end') {
             isFinished = true; es.close(); bar.style.width = '100%'; pctTxt.innerText = '100%';
-            statusTxt.innerText = 'Success'; document.getElementById('st-dot').className = 'dot on';
-            log("Installation complete. Restarting UI...", 'suc');
+            statusTxt.innerText = 'Berhasil'; document.getElementById('st-dot').className = 'dot on';
+            document.getElementById('btn-cn').style.display = 'none';
+            log("Instalasi selesai. Memuat ulang...", 'suc');
             setTimeout(() => location.reload(), 3000); return;
         }
         try {
@@ -235,18 +869,290 @@ function startUpdate() {
             if(data.msg && data.pct === null) log(data.msg);
             if(data.pct !== null) {
                 bar.style.width = data.pct + '%'; pctTxt.innerText = data.pct + '%';
-                statusTxt.innerText = 'Downloading ' + data.pct + '%';
+                statusTxt.innerText = 'Mengunduh ' + data.pct + '%';
             }
         } catch(err) {}
     };
     es.onerror = function() {
-        if (isFinished) return;
+        if (isFinished || isCancelled) return;
         es.close(); document.getElementById('st-dot').className = 'dot off';
-        statusTxt.innerText = 'Failed'; log("Deployment error.", 'err');
-        setTimeout(() => { document.getElementById('pg-box').style.display = 'none'; document.getElementById('btn-up').style.display = 'block'; }, 4000);
+        document.getElementById('btn-cn').style.display = 'none';
+        statusTxt.innerText = 'Gagal';
+        log("Instalasi gagal. Silakan coba lagi.", 'err');
+        setTimeout(() => {
+            document.getElementById('pg-box').style.display = 'none';
+            document.getElementById('btn-up').style.display = 'block';
+        }, 4000);
     };
 }
 window.onload = check;
+
+// ========================================= //
+// MANUAL UPDATE FUNCTIONS                   //
+// ========================================= //
+
+let selectedFilePath = '';
+let selectedFileName = '';
+let verifiedData = null;
+let currentTab = 'url';
+
+// Tab switching
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('content-' + tab).classList.add('active');
+    resetManualState();
+}
+
+// File handling
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.zip')) {
+        alert('Hanya file .zip yang diizinkan!');
+        return;
+    }
+    selectedFileName = file.name;
+    selectedFilePath = file.name; // Browser can't get full path, we'll use this name
+
+    document.getElementById('file-name').innerText = file.name;
+    document.getElementById('file-size').innerText = formatSize(file.size);
+    document.getElementById('file-info').style.display = 'flex';
+    document.getElementById('file-drop').style.display = 'none';
+    document.getElementById('btn-verify-local').disabled = false;
+    resetManualState();
+}
+
+function clearFile() {
+    selectedFilePath = '';
+    selectedFileName = '';
+    document.getElementById('file-input').value = '';
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('file-drop').style.display = 'block';
+    document.getElementById('btn-verify-local').disabled = true;
+    resetManualState();
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// Drag and drop
+const fileDrop = document.getElementById('file-drop');
+if (fileDrop) {
+    fileDrop.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileDrop.classList.add('dragover');
+    });
+    fileDrop.addEventListener('dragleave', () => {
+        fileDrop.classList.remove('dragover');
+    });
+    fileDrop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileDrop.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            const input = document.getElementById('file-input');
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            handleFileSelect({ target: input });
+        }
+    });
+}
+
+// Verify update
+async function verifyManual(source) {
+    const resultBox = document.getElementById('verify-result');
+    const installArea = document.getElementById('manual-install-area');
+
+    resultBox.style.display = 'none';
+    resultBox.className = 'verify-result';
+    installArea.style.display = 'none';
+    verifiedData = null;
+
+    let path = '';
+    let btn;
+
+    if (source === 'url') {
+        path = document.getElementById('update-url').value.trim();
+        btn = document.getElementById('btn-verify-url');
+        if (!path) {
+            resultBox.innerText = 'URL tidak boleh kosong!';
+            resultBox.className = 'verify-result err';
+            resultBox.style.display = 'block';
+            return;
+        }
+        if (!path.startsWith('http')) {
+            resultBox.innerText = 'URL harus dimulai dengan http:// atau https://';
+            resultBox.className = 'verify-result err';
+            resultBox.style.display = 'block';
+            return;
+        }
+    } else {
+        path = selectedFilePath;
+        btn = document.getElementById('btn-verify-local');
+        if (!path) {
+            resultBox.innerText = 'Pilih file update.zip terlebih dahulu!';
+            resultBox.className = 'verify-result err';
+            resultBox.style.display = 'block';
+            return;
+        }
+    }
+
+    const origText = btn.innerText;
+    btn.innerText = 'Memverifikasi...';
+    btn.disabled = true;
+
+    // Update step indicators
+    setStepActive(2);
+
+    const fd = new FormData();
+    fd.append('source', source);
+    fd.append('path', path);
+
+    try {
+        const res = await fetch('?api=verify_update', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        btn.innerText = origText;
+        btn.disabled = false;
+
+        if (data.status === 'ok') {
+            resultBox.innerHTML = `<strong>Versi: ${data.ver}</strong><br>${data.msg}`;
+            if (data.valid) {
+                resultBox.className = 'verify-result succ';
+                installArea.style.display = 'block';
+                verifiedData = { path: path, source: source, ver: data.ver };
+                setStepDone(2);
+            } else {
+                resultBox.className = 'verify-result err';
+            }
+        } else {
+            resultBox.innerText = data.msg;
+            resultBox.className = 'verify-result err';
+        }
+    } catch (err) {
+        btn.innerText = origText;
+        btn.disabled = false;
+        resultBox.innerText = 'Gagal terhubung ke server.';
+        resultBox.className = 'verify-result err';
+    }
+
+    resultBox.style.display = 'block';
+}
+
+// Install manual update
+async function installManual() {
+    if (!verifiedData) {
+        alert('Harap verifikasi update terlebih dahulu!');
+        return;
+    }
+
+    const source = verifiedData.source;
+    let url = '';
+
+    if (source === 'url') {
+        url = '?api=update_stream&url=' + encodeURIComponent(verifiedData.path) + '&type=url';
+    } else {
+        // Local file - use the local update stream endpoint
+        url = '?api=update_local_stream&path=' + encodeURIComponent(verifiedData.path);
+    }
+
+    showProgressOverlay();
+
+    const es = new EventSource(url);
+    es.onmessage = function(e) {
+        if (e.data === 'end') {
+            es.close();
+            hideProgressOverlay();
+            alert('Update berhasil diinstall! Halaman akan dimuat ulang.');
+            location.reload();
+            return;
+        }
+        try {
+            const data = JSON.parse(e.data);
+            if (data.pct !== null) {
+                document.getElementById('prog-bar').style.width = data.pct + '%';
+                document.getElementById('prog-pct').innerText = data.pct + '%';
+                document.getElementById('prog-text').innerText = 'Menginstal ' + data.pct + '%';
+
+                // Update step indicators
+                if (data.pct >= 90) {
+                    setStepDone(2);
+                    setStepActive(3);
+                } else if (data.pct >= 10) {
+                    setStepActive(2);
+                }
+            }
+            if (data.msg) {
+                console.log(data.msg);
+            }
+        } catch(err) {}
+    };
+    es.onerror = function() {
+        es.close();
+        hideProgressOverlay();
+        alert('Instalasi gagal! Silakan coba lagi.');
+    };
+}
+
+// Progress overlay
+function showProgressOverlay() {
+    document.getElementById('progress-overlay').classList.add('show');
+    document.getElementById('prog-bar').style.width = '0%';
+    document.getElementById('prog-pct').innerText = '0%';
+    document.getElementById('prog-text').innerText = 'Memulai instalasi...';
+    document.getElementById('prog-icon').innerText = '⏳';
+    // Reset steps
+    document.getElementById('ps1').className = 'step-num step-done';
+    document.getElementById('ps1').innerText = '✓';
+    document.getElementById('ps2').className = 'step-num';
+    document.getElementById('ps2').innerText = '2';
+    document.getElementById('ps3').className = 'step-num';
+    document.getElementById('ps3').innerText = '3';
+}
+
+function hideProgressOverlay() {
+    document.getElementById('progress-overlay').classList.remove('show');
+}
+
+// Step indicators
+function setStepActive(num) {
+    for (let i = 1; i <= 3; i++) {
+        const el = document.getElementById('sn' + i);
+        if (i < num) {
+            el.className = 'step-num step-done';
+            el.innerText = '✓';
+        } else if (i === num) {
+            el.className = 'step-num step-active';
+            el.innerText = i;
+        } else {
+            el.className = 'step-num';
+            el.innerText = i;
+        }
+    }
+}
+
+function setStepDone(num) {
+    const el = document.getElementById('sn' + num);
+    el.className = 'step-num step-done';
+    el.innerText = '✓';
+}
+
+function resetManualState() {
+    const resultBox = document.getElementById('verify-result');
+    const installArea = document.getElementById('manual-install-area');
+    resultBox.style.display = 'none';
+    resultBox.className = 'verify-result';
+    installArea.style.display = 'none';
+    verifiedData = null;
+    setStepActive(1);
+}
 </script>
 </body>
 </html>
