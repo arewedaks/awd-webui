@@ -1,6 +1,6 @@
 id=php8-webserver
 name=PHP-8 WebUI
-version=3.3.7
+version=4.0.4
 versionCode=011225
 author=@Arewedaks
 description= PHP8 Webserver Modules for Magisk / KernelSU / Apatch, use gateway or 127.0.0.1:80 or 127.0.0.1 direct

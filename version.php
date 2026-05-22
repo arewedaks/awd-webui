@@ -1,3 +1,3 @@
 <?php
-define('CURRENT_VERSION', '4.0.3'); 
+define('CURRENT_VERSION', '4.0.4'); 
 ?>
