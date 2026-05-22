@@ -6,6 +6,7 @@
 URL_DOWNLOAD="$1"
 SOURCE_TYPE="${2:-url}"
 TARGET_DIR="/data/adb/php8"
+TEMP_DIR="/data/adb/php8/update_temp"
 UPDATE_FILE="/sdcard/update_temp.zip"
 LOG_FILE="/sdcard/ota_update.log"
 
@@ -55,7 +56,7 @@ else
     DOWNLOAD_SUCCESS=0
     DOWNLOAD_METHOD=""
 
-    # 1. Coba Busybox Wget (Umum di Android)
+    # 1. Coba Busybox Wget
     if busybox wget --help >/dev/null 2>&1; then
         log "Trying: Busybox wget..."
         busybox wget --no-check-certificate -U "Mozilla/5.0" -O "$UPDATE_FILE" "$URL_DOWNLOAD" 2>&1 | tr '\r' '\n' >> "$LOG_FILE"
@@ -121,12 +122,12 @@ UNZIP_LIST=$(busybox unzip -l "$UPDATE_FILE" 2>&1)
 log "ZIP contents preview:"
 echo "$UNZIP_LIST" | head -20 >> "$LOG_FILE"
 
-# Cek folder yang diperlukan
+# Cek folder/file yang diperlukan
 HAS_FILES=0
 HAS_SCRIPTS=0
 HAS_MODULES=0
-HAS_VERSION=0
 HAS_INSTALL=0
+HAS_MODULE_PROP=0
 
 if echo "$UNZIP_LIST" | grep -q "files/"; then
     HAS_FILES=1
@@ -143,31 +144,45 @@ if echo "$UNZIP_LIST" | grep -q "modules/"; then
     log "Found: modules/"
 fi
 
-if echo "$UNZIP_LIST" | grep -q "version.php"; then
-    HAS_VERSION=1
-    log "Found: version.php"
-fi
-
 if echo "$UNZIP_LIST" | grep -q "install.sh"; then
     HAS_INSTALL=1
     log "Found: install.sh"
 fi
 
-if [ $HAS_FILES -eq 0 ] && [ $HAS_SCRIPTS -eq 0 ] && [ $HAS_MODULES -eq 0 ] && [ $HAS_INSTALL -eq 0 ]; then
+# Wajib ada module.prop untuk validasi
+if echo "$UNZIP_LIST" | grep -qE "modules/php8-webserver/module\.prop"; then
+    HAS_MODULE_PROP=1
+    log "Found: modules/php8-webserver/module.prop [VALID]"
+fi
+
+# Validasi minimum requirement
+if [ $HAS_FILES -eq 0 ] && [ $HAS_SCRIPTS -eq 0 ] && [ $HAS_MODULES -eq 0 ]; then
     log "ERROR: Invalid update package"
-    log "Must contain at least one of: files/, scripts/, modules/, or install.sh"
+    log "Must contain at least one of: files/, scripts/, or modules/"
     rm -f "$UPDATE_FILE"
     exit 1
 fi
 
-# --- PERSIAPAN DIREKTORI ---
-if [ ! -d "$TARGET_DIR" ]; then
-    log "Creating target directory: $TARGET_DIR"
-    mkdir -p "$TARGET_DIR"
+if [ $HAS_MODULE_PROP -eq 0 ]; then
+    log "ERROR: Invalid update package"
+    log "Missing modules/php8-webserver/module.prop"
+    rm -f "$UPDATE_FILE"
+    exit 1
 fi
 
-# Buat folder tmp untuk session PHP dan error log SEBELUM ekstrak
-log "Ensuring tmp directory exists..."
+if [ $HAS_INSTALL -eq 0 ]; then
+    log "ERROR: Invalid update package"
+    log "Missing install.sh"
+    rm -f "$UPDATE_FILE"
+    exit 1
+fi
+
+# --- PERSIAPAN FOLDER ---
+log "Preparing directories..."
+
+# Hapus folder temp lama jika ada
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR"
 mkdir -p "${TARGET_DIR}/files/tmp"
 chmod 755 "${TARGET_DIR}/files/tmp"
 
@@ -175,52 +190,45 @@ chmod 755 "${TARGET_DIR}/files/tmp"
 log "Backing up existing files..."
 [ -d "${TARGET_DIR}/files" ] && mv "${TARGET_DIR}/files" "${TARGET_DIR}/files.bak" 2>> "$LOG_FILE"
 [ -d "${TARGET_DIR}/scripts" ] && mv "${TARGET_DIR}/scripts" "${TARGET_DIR}/scripts.bak" 2>> "$LOG_FILE"
-[ -d "${TARGET_DIR}/modules" ] && mv "${TARGET_DIR}/modules" "${TARGET_DIR}/modules.bak" 2>> "$LOG_FILE"
 
-# Extract
-log "Extracting ZIP to $TARGET_DIR..."
-busybox unzip -o "$UPDATE_FILE" -d "$TARGET_DIR" 2>&1 >> "$LOG_FILE"
+# --- EKSTRAK KE FOLDER TEMP ---
+log "90%"
+log "Extracting to temp directory..."
+busybox unzip -o "$UPDATE_FILE" -d "$TEMP_DIR" 2>&1 >> "$LOG_FILE"
 EXTRACT_RESULT=$?
 
 if [ $EXTRACT_RESULT -eq 0 ]; then
     log "95%"
     log "Finalizing..."
 
-    # Hapus backup lama
-    rm -rf "${TARGET_DIR}/files.bak" 2>> "$LOG_FILE"
-    rm -rf "${TARGET_DIR}/scripts.bak" 2>> "$LOG_FILE"
-    rm -rf "${TARGET_DIR}/modules.bak" 2>> "$LOG_FILE"
-
-    # Buat folder tmp untuk session PHP jika tidak ada
-    if [ ! -d "${TARGET_DIR}/files/tmp" ]; then
-        log "Creating PHP session directory..."
-        mkdir -p "${TARGET_DIR}/files/tmp"
-        chmod 755 "${TARGET_DIR}/files/tmp"
-    fi
-
-    # Jalankan install.sh jika ada
-    if [ -f "${TARGET_DIR}/install.sh" ]; then
+    # Jalankan install.sh dari folder temp
+    if [ -f "${TEMP_DIR}/install.sh" ]; then
         log "Running install.sh..."
-        chmod 755 "${TARGET_DIR}/install.sh"
-        sh "${TARGET_DIR}/install.sh" 2>&1 >> "$LOG_FILE"
+        chmod 755 "${TEMP_DIR}/install.sh"
+        sh "${TEMP_DIR}/install.sh" 2>&1 >> "$LOG_FILE"
         INSTALL_RESULT=$?
         if [ $INSTALL_RESULT -eq 0 ]; then
             log "install.sh completed successfully"
         else
             log "WARNING: install.sh returned error code $INSTALL_RESULT"
         fi
-        rm -f "${TARGET_DIR}/install.sh"
     fi
 
+    # Hapus backup lama
+    rm -rf "${TARGET_DIR}/files.bak" 2>> "$LOG_FILE"
+    rm -rf "${TARGET_DIR}/scripts.bak" 2>> "$LOG_FILE"
+
     # Baca versi baru jika ada
-    if [ -f "${TARGET_DIR}/version.php" ]; then
-        NEW_VER=$(grep -oP "define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"]\K[^'\"]+" "${TARGET_DIR}/version.php" 2>/dev/null)
+    if [ -f "${TEMP_DIR}/version.php" ]; then
+        NEW_VER=$(grep -oE "define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"][^'\"]+['\"]" "${TEMP_DIR}/version.php" 2>/dev/null | sed "s/.*,\s*['\"]//;s/['\"]//")
         if [ -n "$NEW_VER" ]; then
             log "New version detected: $NEW_VER"
         fi
     fi
 
+    # Bersihkan
     rm -f "$UPDATE_FILE"
+    rm -rf "$TEMP_DIR"
     log "100%"
     log "=========================================="
     log "UPDATE SUCCEEDED"
@@ -234,9 +242,9 @@ else
 
     [ -d "${TARGET_DIR}/files.bak" ] && mv "${TARGET_DIR}/files.bak" "${TARGET_DIR}/files" 2>> "$LOG_FILE"
     [ -d "${TARGET_DIR}/scripts.bak" ] && mv "${TARGET_DIR}/scripts.bak" "${TARGET_DIR}/scripts" 2>> "$LOG_FILE"
-    [ -d "${TARGET_DIR}/modules.bak" ] && mv "${TARGET_DIR}/modules.bak" "${TARGET_DIR}/modules" 2>> "$LOG_FILE"
 
     rm -f "$UPDATE_FILE"
+    rm -rf "$TEMP_DIR"
     log "=========================================="
     log "UPDATE FAILED - Rollback completed"
     log "Check log for details: $LOG_FILE"

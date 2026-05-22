@@ -4,126 +4,94 @@
 #============================================#
 
 # === Konfigurasi ===
-DIR_MODUL="/data/adb/modules/php8-webserver"
+EXTRACT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PHP_DATA_DIR="/data/adb/php8"
-WWW_DIR="${PHP_DATA_DIR}/files/www"
+MAGISK_MOD_DIR="/data/adb/modules/php8-webserver"
 
-# === Inisialisasi ===
-[ ! -d "$DIR_MODUL" ] && {
-    echo "ERROR: Folder $DIR_MODUL tidak ditemukan!"
-    exit 1
-}
-cd "$DIR_MODUL"
-
+echo ""
 echo "========================================"
 echo " AweDaks PHP8 WebServer - Install"
 echo "========================================"
+echo " Extract Dir: $EXTRACT_DIR"
+echo ""
 
 #============================================#
-# 1. Set Permission
+# 1. Copy files/ → /data/adb/php8/files/
+#============================================#
+echo "[1/5] Menginstal files/..."
+
+if [ -d "${EXTRACT_DIR}/files" ]; then
+    mkdir -p "${PHP_DATA_DIR}/files"
+    cp -r "${EXTRACT_DIR}/files/"* "${PHP_DATA_DIR}/files/"
+
+    # Set permission
+    chmod -R 0755 "${PHP_DATA_DIR}/files"
+    echo "  -> files/ -> ${PHP_DATA_DIR}/files/ [OK]"
+else
+    echo "  -> files/ tidak ditemukan [SKIP]"
+fi
+
+#============================================#
+# 2. Copy scripts/ → /data/adb/php8/scripts/
 #============================================#
 echo ""
-echo "[1/4] Mengatur Permissions..."
+echo "[2/5] Menginstal scripts/..."
+
+if [ -d "${EXTRACT_DIR}/scripts" ]; then
+    mkdir -p "${PHP_DATA_DIR}/scripts"
+    cp -r "${EXTRACT_DIR}/scripts/"* "${PHP_DATA_DIR}/scripts/"
+
+    # Set executable permission untuk semua script
+    find "${PHP_DATA_DIR}/scripts" -type f -exec chmod 0755 {} \;
+    echo "  -> scripts/ -> ${PHP_DATA_DIR}/scripts/ [OK]"
+else
+    echo "  -> scripts/ tidak ditemukan [SKIP]"
+fi
+
+#============================================#
+# 3. Copy modules/ → /data/adb/modules/
+#============================================#
+echo ""
+echo "[3/5] Menginstal modules/..."
+
+if [ -d "${EXTRACT_DIR}/modules" ]; then
+    cp -r "${EXTRACT_DIR}/modules/"* "/data/adb/modules/"
+    echo "  -> modules/ -> /data/adb/modules/ [OK]"
+else
+    echo "  -> modules/ tidak ditemukan [SKIP]"
+fi
+
+#============================================#
+# 4. Copy version.php ke /data/adb/php8/files/www/
+#============================================#
+echo ""
+echo "[4/5] Menginstal version.php..."
+
+if [ -f "${EXTRACT_DIR}/version.php" ]; then
+    mkdir -p "${PHP_DATA_DIR}/files/www"
+    cp "${EXTRACT_DIR}/version.php" "${PHP_DATA_DIR}/files/www/"
+    chmod 0644 "${PHP_DATA_DIR}/files/www/version.php"
+    echo "  -> version.php -> ${PHP_DATA_DIR}/files/www/version.php [OK]"
+else
+    echo "  -> version.php tidak ditemukan [SKIP]"
+fi
+
+#============================================#
+# 5. Set Permission Akhir
+#============================================#
+echo ""
+echo "[5/5] Mengatur permissions akhir..."
 
 # www directory
-if [ -d "$WWW_DIR" ]; then
-    find "$WWW_DIR" -type d -exec chmod 0755 {} \;
-    find "$WWW_DIR" -type f -exec chmod 0644 {} \;
-    echo "  -> www permission: OK"
-fi
-
-# scripts directory
-if [ -d "${PHP_DATA_DIR}/scripts" ]; then
-    find "${PHP_DATA_DIR}/scripts" -type d -exec chmod 0755 {} \;
-    find "${PHP_DATA_DIR}/scripts" -type f -exec chmod 0755 {} \;
-    echo "  -> scripts permission: OK"
-fi
-
-# config directory
-if [ -d "${PHP_DATA_DIR}/files/config" ]; then
-    find "${PHP_DATA_DIR}/files/config" -type d -exec chmod 0755 {} \;
-    find "${PHP_DATA_DIR}/files/config" -type f -exec chmod 0644 {} \;
-    echo "  -> config permission: OK"
-fi
-
-# bin directory
-if [ -d "${PHP_DATA_DIR}/files/bin" ]; then
-    find "${PHP_DATA_DIR}/files/bin" -type d -exec chmod 0755 {} \;
-    find "${PHP_DATA_DIR}/files/bin" -type f -exec chmod 0755 {} \;
-    echo "  -> bin permission: OK"
+if [ -d "${PHP_DATA_DIR}/files/www" ]; then
+    find "${PHP_DATA_DIR}/files/www" -type f -exec chmod 0644 {} \;
+    echo "  -> www permission [OK]"
 fi
 
 # tmp directory
 if [ -d "${PHP_DATA_DIR}/files/tmp" ]; then
     chmod 0755 "${PHP_DATA_DIR}/files/tmp"
-    echo "  -> tmp permission: OK"
-fi
-
-#============================================#
-# 2. Move Files to /files/www
-#============================================#
-echo ""
-echo "[2/4] Memindahkan File ke /files/www..."
-
-if [ -d "$WWW_DIR" ]; then
-    count=0
-    for item in *; do
-        # Skip directories and special files
-        [ -d "$item" ] && continue
-        [ "$item" = "modules" ] && continue
-        [ "$item" = "install.sh" ] && continue
-
-        if [ -f "$item" ]; then
-            mv -f "$item" "$WWW_DIR/"
-            count=$((count + 1))
-        fi
-    done
-    echo "  -> $count file dipindahkan"
-else
-    echo "  -> ERROR: $WWW_DIR tidak ditemukan"
-fi
-
-#============================================#
-# 3. Update Version from version.php
-#============================================#
-echo ""
-echo "[3/4] Memperbarui Versi Module..."
-
-if [ -f "version.php" ]; then
-    NEW_VER=$(grep -oP "define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"]\K[^'\"]+" "version.php" 2>/dev/null)
-    if [ -n "$NEW_VER" ]; then
-        echo "  -> Versi detected: $NEW_VER"
-
-        # Update /data/adb/modules/php8-webserver/module.prop
-        if [ -f "${DIR_MODUL}/module.prop" ]; then
-            sed -i "s/^version=.*/version=${NEW_VER}/g" "${DIR_MODUL}/module.prop"
-            sed -i "s/^versionCode=.*/versionCode=$(date +'%Y%m%d')/g" "${DIR_MODUL}/module.prop"
-            echo "  -> ${DIR_MODUL}/module.prop updated"
-        else
-            echo "  -> WARNING: module.prop tidak ditemukan"
-        fi
-    else
-        echo "  -> WARNING: Tidak bisa baca versi dari version.php"
-    fi
-else
-    echo "  -> WARNING: version.php tidak ditemukan"
-fi
-
-#============================================#
-# 4. Move modules/php8-webserver contents
-#============================================#
-echo ""
-echo "[4/4] Memindahkan Isi Module..."
-
-if [ -d "modules/php8-webserver" ]; then
-    # Pastikan direktori tujuan ada
-    mkdir -p "$DIR_MODUL"
-
-    # Copy isi modules/php8-webserver ke /data/adb/modules/php8-webserver
-    cp -r modules/php8-webserver/* "$DIR_MODUL/" 2>/dev/null
-    echo "  -> modules/php8-webserver -> $DIR_MODUL"
-else
-    echo "  -> WARNING: modules/php8-webserver tidak ditemukan"
+    echo "  -> tmp permission [OK]"
 fi
 
 #============================================#
@@ -131,5 +99,5 @@ fi
 #============================================#
 echo ""
 echo "========================================"
-echo " Install Selesai!"
+echo " ✅ Instalasi Selesai!"
 echo "========================================"
