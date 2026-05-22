@@ -1,186 +1,135 @@
 #!/system/bin/sh
 #============================================#
-#  AweDaks PHP8 WebServer - Install Script  #
+#  AweDaks PHP8 WebServer - Install Script   #
 #============================================#
 
 # === Konfigurasi ===
 DIR_MODUL="/data/adb/modules/php8-webserver"
 PHP_DATA_DIR="/data/adb/php8"
-PHP_BIN_DIR="${PHP_DATA_DIR}/files/bin"
-SYSTEM_UID="1000"
-SYSTEM_GID="1000"
-VERSION="3.3.7"
+WWW_DIR="${PHP_DATA_DIR}/files/www"
 
 # === Inisialisasi ===
 [ ! -d "$DIR_MODUL" ] && {
-    echo "❌ Folder $DIR_MODUL tidak ditemukan!"
+    echo "ERROR: Folder $DIR_MODUL tidak ditemukan!"
     exit 1
 }
 cd "$DIR_MODUL"
 
+echo "========================================"
+echo " AweDaks PHP8 WebServer - Install"
+echo "========================================"
+
 #============================================#
-# 1. Update Versi Module
+# 1. Set Permission
 #============================================#
 echo ""
-echo "╔══════════════════════════════════════╗"
-echo "║  📦 Memperbarui versi modul Magisk   ║"
-echo "╚══════════════════════════════════════╝"
+echo "[1/4] Mengatur Permissions..."
 
-VERSION_CODE=$(date +'%Y%m%d')
-if [ -f "module.prop" ]; then
-    sed -i "s/^version=.*/version=${VERSION}/g" module.prop
-    sed -i "s/^versionCode=.*/versionCode=${VERSION_CODE}/g" module.prop
-    echo "✅ module.prop updated → v${VERSION} (${VERSION_CODE})"
+# www directory
+if [ -d "$WWW_DIR" ]; then
+    find "$WWW_DIR" -type d -exec chmod 0755 {} \;
+    find "$WWW_DIR" -type f -exec chmod 0644 {} \;
+    echo "  -> www permission: OK"
+fi
+
+# scripts directory
+if [ -d "${PHP_DATA_DIR}/scripts" ]; then
+    find "${PHP_DATA_DIR}/scripts" -type d -exec chmod 0755 {} \;
+    find "${PHP_DATA_DIR}/scripts" -type f -exec chmod 0755 {} \;
+    echo "  -> scripts permission: OK"
+fi
+
+# config directory
+if [ -d "${PHP_DATA_DIR}/files/config" ]; then
+    find "${PHP_DATA_DIR}/files/config" -type d -exec chmod 0755 {} \;
+    find "${PHP_DATA_DIR}/files/config" -type f -exec chmod 0644 {} \;
+    echo "  -> config permission: OK"
+fi
+
+# bin directory
+if [ -d "${PHP_DATA_DIR}/files/bin" ]; then
+    find "${PHP_DATA_DIR}/files/bin" -type d -exec chmod 0755 {} \;
+    find "${PHP_DATA_DIR}/files/bin" -type f -exec chmod 0755 {} \;
+    echo "  -> bin permission: OK"
+fi
+
+# tmp directory
+if [ -d "${PHP_DATA_DIR}/files/tmp" ]; then
+    chmod 0755 "${PHP_DATA_DIR}/files/tmp"
+    echo "  -> tmp permission: OK"
 fi
 
 #============================================#
-# 2. Install Files & Scripts
+# 2. Move Files to /files/www
 #============================================#
 echo ""
-echo "╔══════════════════════════════════════╗"
-echo "║  📂 Menginstal Files & Scripts        ║"
-echo "╚══════════════════════════════════════╝"
+echo "[2/4] Memindahkan File ke /files/www..."
 
-install_from_repo() {
-    local source_dir="$1"
-    local dest_dir="$2"
-    local label="$3"
-    local count=0
+if [ -d "$WWW_DIR" ]; then
+    count=0
+    for item in *; do
+        # Skip directories and special files
+        [ -d "$item" ] && continue
+        [ "$item" = "modules" ] && continue
+        [ "$item" = "install.sh" ] && continue
 
-    if [ ! -d "$source_dir" ]; then
-        echo "⚠️  $label: Folder sumber tidak ditemukan"
-        return
-    fi
-
-    mkdir -p "$dest_dir"
-    cp -r "$source_dir"/* "$dest_dir/" 2>/dev/null
-    count=$(find "$source_dir" -type f | wc -l)
-    echo "✅ $label: $count file diinstal"
-}
-
-# Copy files dan scripts ke /data/adb/php8/
-install_from_repo "files" "$PHP_DATA_DIR/files" "Files"
-install_from_repo "scripts" "$PHP_DATA_DIR/scripts" "Scripts"
-
-#============================================#
-# 3. Fix Permission
-#============================================#
-echo ""
-echo "╔══════════════════════════════════════╗"
-echo "║  🔧 Mengatur File Permissions         ║"
-echo "╚══════════════════════════════════════╝"
-
-set_perm_recursive() {
-    find "$1" -type d -exec chown "$2:$3" {} \; -exec chmod "$4" {} \;
-    find "$1" -type f -exec chown "$2:$3" {} \; -exec chmod "$5" {} \;
-}
-
-set_perm_single() {
-    [ -f "$1" ] || return
-    chown "$2:$3" "$1"
-    chmod "$4" "$1"
-}
-
-# Permission untuk direktori utama
-set_perm_recursive "$DIR_MODUL" 0 0 0755 0644
-set_perm_recursive "$PHP_DATA_DIR" 0 0 0755 0644
-
-# Permission untuk sub-direktori
-set_perm_recursive "${PHP_DATA_DIR}/scripts" 0 0 0755 0755
-set_perm_recursive "${PHP_DATA_DIR}/files/config" 0 0 0755 0644
-set_perm_recursive "${PHP_DATA_DIR}/files/www" "$SYSTEM_UID" "$SYSTEM_GID" 0755 0644
-set_perm_recursive "$PHP_BIN_DIR" "$SYSTEM_UID" "$SYSTEM_GID" 0755 0755
-set_perm_recursive "${PHP_DATA_DIR}/files/tmp" 0 0 0755 0644
-
-# Permission khusus untuk scripts
-echo "🚀 Applying scripts permissions..."
-for script in \
-    "${PHP_DATA_DIR}/scripts/php_run" \
-    "${PHP_DATA_DIR}/scripts/ttyd_run" \
-    "${PHP_DATA_DIR}/scripts/autorun" \
-    "${PHP_DATA_DIR}/scripts/sfa" \
-    "${PHP_DATA_DIR}/scripts/php_inotifyd"; do
-    set_perm_single "$script" 0 0 0755
-done
-
-# Permission khusus untuk binaries
-echo "🚀 Applying binaries permissions..."
-for binary in \
-    "${PHP_BIN_DIR}/php" \
-    "${PHP_BIN_DIR}/ttyd"; do
-    set_perm_single "$binary" 0 0 0755
-done
-
-# Permission untuk config files
-echo "🚀 Applying config permissions..."
-for config in \
-    "${PHP_DATA_DIR}/files/config/php.config" \
-    "${PHP_DATA_DIR}/files/config/php.ini" \
-    "${PHP_DATA_DIR}/files/config/onboot.cfg"; do
-    set_perm_single "$config" "$SYSTEM_UID" "$SYSTEM_GID" 0644
-done
-
-echo "✅ Permissions berhasil diterapkan!"
-
-#============================================#
-# 4. Auto Move Files (jika ada file tambahan)
-#============================================#
-echo ""
-echo "╔══════════════════════════════════════╗"
-echo "║  📦 Memindahkan File Tambahan        ║"
-echo "╚══════════════════════════════════════╝"
-
-auto_move() {
-    local source_dir="$1"
-    local moved=0
-
-    [ ! -d "$source_dir" ] && return
-    [ -z "$(ls -A "$source_dir" 2>/dev/null)" ] && {
-        echo "ℹ️  Tidak ada file tambahan"
-        return
-    }
-
-    for file in "$source_dir"/*; do
-        [ ! -f "$file" ] && continue
-
-        filename=$(basename "$file")
-        target=""
-
-        case "$filename" in
-            php|ttyd|nginx|caddy|lighttpd)
-                target="${PHP_BIN_DIR}/${filename}"
-                ;;
-            php.ini|php.config|www.conf|nginx.conf|caddy.conf|lighttpd.conf)
-                target="${PHP_DATA_DIR}/files/config/${filename}"
-                ;;
-            php_run|ttyd_run|autorun|sfa|php_inotifyd|nginx_run|caddy_run|lighttpd_run)
-                target="${PHP_DATA_DIR}/scripts/${filename}"
-                ;;
-            *.php|*.html|*.htm|*.css|*.js|*.json|*.xml|*.txt|*.md)
-                target="${PHP_DATA_DIR}/files/www/${filename}"
-                ;;
-            *)
-                continue
-                ;;
-        esac
-
-        if [ -n "$target" ]; then
-            mkdir -p "$(dirname "$target")"
-            mv -f "$file" "$target"
-            echo "  📦 ${filename} → $(dirname "$target")/"
-            moved=$((moved + 1))
+        if [ -f "$item" ]; then
+            mv -f "$item" "$WWW_DIR/"
+            count=$((count + 1))
         fi
     done
+    echo "  -> $count file dipindahkan"
+else
+    echo "  -> ERROR: $WWW_DIR tidak ditemukan"
+fi
 
-    [ $moved -gt 0 ] && echo "✅ $moved file tambahan dipindahkan!" || echo "ℹ️  Tidak ada file tambahan."
-}
+#============================================#
+# 3. Update Version from version.php
+#============================================#
+echo ""
+echo "[3/4] Memperbarui Versi Module..."
 
-auto_move "$PHP_DATA_DIR"
+if [ -f "version.php" ]; then
+    NEW_VER=$(grep -oP "define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"]\K[^'\"]+" "version.php" 2>/dev/null)
+    if [ -n "$NEW_VER" ]; then
+        echo "  -> Versi detected: $NEW_VER"
+
+        # Update /data/adb/modules/php8-webserver/module.prop
+        if [ -f "${DIR_MODUL}/module.prop" ]; then
+            sed -i "s/^version=.*/version=${NEW_VER}/g" "${DIR_MODUL}/module.prop"
+            sed -i "s/^versionCode=.*/versionCode=$(date +'%Y%m%d')/g" "${DIR_MODUL}/module.prop"
+            echo "  -> ${DIR_MODUL}/module.prop updated"
+        else
+            echo "  -> WARNING: module.prop tidak ditemukan"
+        fi
+    else
+        echo "  -> WARNING: Tidak bisa baca versi dari version.php"
+    fi
+else
+    echo "  -> WARNING: version.php tidak ditemukan"
+fi
+
+#============================================#
+# 4. Move modules/php8-webserver contents
+#============================================#
+echo ""
+echo "[4/4] Memindahkan Isi Module..."
+
+if [ -d "modules/php8-webserver" ]; then
+    # Pastikan direktori tujuan ada
+    mkdir -p "$DIR_MODUL"
+
+    # Copy isi modules/php8-webserver ke /data/adb/modules/php8-webserver
+    cp -r modules/php8-webserver/* "$DIR_MODUL/" 2>/dev/null
+    echo "  -> modules/php8-webserver -> $DIR_MODUL"
+else
+    echo "  -> WARNING: modules/php8-webserver tidak ditemukan"
+fi
 
 #============================================#
 # Selesai
 #============================================#
 echo ""
-echo "╔══════════════════════════════════════╗"
-echo "║  ✅ Instalasi Selesai!                ║"
-echo "╚══════════════════════════════════════╝"
+echo "========================================"
+echo " Install Selesai!"
+echo "========================================"
