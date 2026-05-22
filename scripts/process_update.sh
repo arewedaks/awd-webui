@@ -218,14 +218,6 @@ if [ $EXTRACT_RESULT -eq 0 ]; then
     rm -rf "${TARGET_DIR}/files.bak" 2>> "$LOG_FILE"
     rm -rf "${TARGET_DIR}/scripts.bak" 2>> "$LOG_FILE"
 
-    # Baca versi baru jika ada
-    if [ -f "${TEMP_DIR}/version.php" ]; then
-        NEW_VER=$(grep -oE "define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"][^'\"]+['\"]" "${TEMP_DIR}/version.php" 2>/dev/null | sed "s/.*,\s*['\"]//;s/['\"]//")
-        if [ -n "$NEW_VER" ]; then
-            log "New version detected: $NEW_VER"
-        fi
-    fi
-
     # Bersihkan
     rm -f "$UPDATE_FILE"
     rm -rf "$TEMP_DIR"
