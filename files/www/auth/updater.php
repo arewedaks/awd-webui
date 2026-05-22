@@ -95,9 +95,9 @@ if (isset($_REQUEST['api'])) {
             }
             $zipPath = $tmpFile;
         } else {
-            // Path lokal
-            $zipPath = realpath($path);
-            if (!$zipPath || !file_exists($zipPath)) {
+            // Path lokal - tidak pakai realpath karena bisa gagal di Android
+            $zipPath = $path;
+            if (!file_exists($zipPath)) {
                 echo json_encode(['status' => 'error', 'msg' => 'File tidak ditemukan: ' . basename($path)]);
                 exit;
             }
@@ -219,38 +219,7 @@ if (isset($_REQUEST['api'])) {
         exit;
     }
 
-    // Install dari file lokal yang sudah di-verify
-    if ($act === 'update_local') {
-        header('Content-Type: application/json');
-        $path = $_POST['path'] ?? '';
-        $verified = $_POST['verified'] ?? 'false';
-        $ver = $_POST['ver'] ?? 'unknown';
-
-        if ($verified !== 'true') {
-            echo json_encode(['status' => 'error', 'msg' => 'Update belum diverifikasi.']);
-            exit;
-        }
-
-        $zipPath = realpath($path);
-        if (!$zipPath || !file_exists($zipPath)) {
-            echo json_encode(['status' => 'error', 'msg' => 'File tidak ditemukan.']);
-            exit;
-        }
-
-        // Copy ke lokasi standar dan jalankan
-        $cmd = "sh /data/adb/php8/scripts/process_update.sh " . escapeshellarg($zipPath);
-        $output = shell_exec($cmd);
-        $exitCode = 0;
-
-        echo json_encode([
-            'status' => 'ok',
-            'msg' => 'Instalasi selesai.',
-            'output' => trim($output)
-        ]);
-        exit;
-    }
-
-    // Install dari file lokal via SSE stream (untuk progress real-time)
+    // Install via SSE stream (support URL dan lokal)
     if ($act === 'update_local_stream') {
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');
@@ -272,18 +241,25 @@ if (isset($_REQUEST['api'])) {
         }
 
         $script = '/data/adb/php8/scripts/process_update.sh';
-        $cmd = "su -c sh " . escapeshellarg($script) . " " . escapeshellarg($path) . " local 2>&1";
+        $cmd = "sh " . escapeshellarg($script) . " " . escapeshellarg($path) . " local 2>&1";
 
         $proc = popen($cmd, 'r');
         if ($proc) {
             while (!feof($proc)) {
                 $line = fgets($proc);
-                if ($line) {
-                    $cleanLine = trim($line);
-                    $pct = null;
-                    if (preg_match('/(\d{1,3})%/', $cleanLine, $matches)) $pct = intval($matches[1]);
-                    echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct]) . "\n\n";
-                    flush();
+                if ($line === false) break;
+                $cleanLine = trim($line);
+                $pct = null;
+                if (preg_match('/(\d{1,3})%/', $cleanLine, $matches)) {
+                    $pct = intval($matches[1]);
+                }
+                echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct]) . "\n\n";
+                flush();
+
+                // Jika sudah selesai (SUKSES atau ERROR), tunggu sebentar lalu kirim end
+                if ($cleanLine === 'SUKSES' || strpos($cleanLine, 'ERROR') === 0) {
+                    usleep(500000); // 0.5 detik
+                    break;
                 }
             }
             pclose($proc);
@@ -305,21 +281,29 @@ if (isset($_REQUEST['api'])) {
         $url = $_GET['url'] ?? '';
         $type = $_GET['type'] ?? 'url';
         $script = '/data/adb/php8/scripts/process_update.sh';
-        $cmd = "su -c sh " . escapeshellarg($script) . " " . escapeshellarg($url) . " " . escapeshellarg($type) . " 2>&1";
+        $cmd = "sh " . escapeshellarg($script) . " " . escapeshellarg($url) . " " . escapeshellarg($type) . " 2>&1";
         $proc = popen($cmd, 'r');
         if ($proc) {
             while (!feof($proc)) {
                 $line = fgets($proc);
-                if ($line) {
-                    $cleanLine = trim($line); $pct = null;
-                    if (preg_match('/(\d{1,3})%/', $cleanLine, $matches)) $pct = intval($matches[1]);
-                    echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct]) . "\n\n";
-                    flush();
+                if ($line === false) break;
+                $cleanLine = trim($line);
+                $pct = null;
+                if (preg_match('/(\d{1,3})%/', $cleanLine, $matches)) $pct = intval($matches[1]);
+                echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct]) . "\n\n";
+                flush();
+
+                // Jika sudah selesai (SUKSES atau ERROR), tunggu sebentar lalu kirim end
+                if ($cleanLine === 'SUKSES' || strpos($cleanLine, 'ERROR') === 0) {
+                    usleep(500000); // 0.5 detik
+                    break;
                 }
             }
             pclose($proc);
         }
-        echo "data: end\n\n"; flush(); exit;
+        echo "data: end\n\n";
+        flush();
+        exit;
     }
 }
 ?>
@@ -485,74 +469,13 @@ if (isset($_REQUEST['api'])) {
             color: var(--text-sub);
             font-weight: 400;
         }
-        .file-drop {
-            border: 2px dashed var(--border);
-            border-radius: 16px;
-            padding: 25px;
-            text-align: center;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-bottom: 12px;
-        }
-        .file-drop:hover, .file-drop.dragover {
-            border-color: var(--primary);
-            background: var(--accent);
-        }
-        .file-drop-icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-        .file-drop-text {
-            font-size: 0.8rem;
-            color: var(--text-sub);
-            font-weight: 600;
-        }
-        .file-drop-hint {
-            font-size: 0.65rem;
-            color: var(--text-sub);
-            margin-top: 5px;
-            opacity: 0.7;
-        }
-        .selected-file {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px;
-            background: rgba(0,0,0,0.05);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            margin-bottom: 12px;
-        }
-        .selected-file-icon {
-            font-size: 1.5rem;
-        }
-        .selected-file-info {
-            flex: 1;
+        .btn-manual {
         }
         .selected-file-name {
             font-size: 0.8rem;
             font-weight: 700;
             color: var(--text-main);
             word-break: break-all;
-        }
-        .selected-file-size {
-            font-size: 0.65rem;
-            color: var(--text-sub);
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
-        .selected-file-remove {
-            background: var(--dang);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            width: 28px;
-            height: 28px;
-            cursor: pointer;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         .btn-manual {
             background: var(--primary);
@@ -746,21 +669,12 @@ if (isset($_REQUEST['api'])) {
 
         <!-- Local File Tab -->
         <div class="tab-content" id="content-local">
-            <input type="file" id="file-input" accept=".zip" style="display:none" onchange="handleFileSelect(event)">
-            <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
-                <div class="file-drop-icon">📦</div>
-                <div class="file-drop-text">Klik untuk pilih update.zip</div>
-                <div class="file-drop-hint">atau drag & drop file ke sini</div>
+            <div class="input-group">
+                <label class="input-label">Path file update.zip</label>
+                <input type="text" class="input-field" id="local-path" placeholder="/sdcard/update.zip">
+                <div style="font-size:0.6rem;color:var(--text-sub);margin-top:4px;">Contoh: /sdcard/update.zip, /storage/emulated/0/Download/update.zip</div>
             </div>
-            <div class="selected-file" id="file-info" style="display:none">
-                <div class="selected-file-icon">📁</div>
-                <div class="selected-file-info">
-                    <div class="selected-file-name" id="file-name">-</div>
-                    <div class="selected-file-size" id="file-size">-</div>
-                </div>
-                <button class="selected-file-remove" onclick="clearFile()">✕</button>
-            </div>
-            <button class="btn-manual" id="btn-verify-local" onclick="verifyManual('local')" disabled>
+            <button class="btn-manual" id="btn-verify-local" onclick="verifyManual('local')">
                 Verifikasi Update
             </button>
         </div>
@@ -891,8 +805,6 @@ window.onload = check;
 // MANUAL UPDATE FUNCTIONS                   //
 // ========================================= //
 
-let selectedFilePath = '';
-let selectedFileName = '';
 let verifiedData = null;
 let currentTab = 'url';
 
@@ -904,65 +816,6 @@ function switchTab(tab) {
     document.getElementById('tab-' + tab).classList.add('active');
     document.getElementById('content-' + tab).classList.add('active');
     resetManualState();
-}
-
-// File handling
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (!file.name.endsWith('.zip')) {
-        alert('Hanya file .zip yang diizinkan!');
-        return;
-    }
-    selectedFileName = file.name;
-    selectedFilePath = file.name; // Browser can't get full path, we'll use this name
-
-    document.getElementById('file-name').innerText = file.name;
-    document.getElementById('file-size').innerText = formatSize(file.size);
-    document.getElementById('file-info').style.display = 'flex';
-    document.getElementById('file-drop').style.display = 'none';
-    document.getElementById('btn-verify-local').disabled = false;
-    resetManualState();
-}
-
-function clearFile() {
-    selectedFilePath = '';
-    selectedFileName = '';
-    document.getElementById('file-input').value = '';
-    document.getElementById('file-info').style.display = 'none';
-    document.getElementById('file-drop').style.display = 'block';
-    document.getElementById('btn-verify-local').disabled = true;
-    resetManualState();
-}
-
-function formatSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-// Drag and drop
-const fileDrop = document.getElementById('file-drop');
-if (fileDrop) {
-    fileDrop.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        fileDrop.classList.add('dragover');
-    });
-    fileDrop.addEventListener('dragleave', () => {
-        fileDrop.classList.remove('dragover');
-    });
-    fileDrop.addEventListener('drop', (e) => {
-        e.preventDefault();
-        fileDrop.classList.remove('dragover');
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            const input = document.getElementById('file-input');
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
-            handleFileSelect({ target: input });
-        }
-    });
 }
 
 // Verify update
@@ -994,10 +847,24 @@ async function verifyManual(source) {
             return;
         }
     } else {
-        path = selectedFilePath;
+        // Ambil path dari input field
+        path = document.getElementById('local-path').value.trim();
         btn = document.getElementById('btn-verify-local');
         if (!path) {
-            resultBox.innerText = 'Pilih file update.zip terlebih dahulu!';
+            resultBox.innerText = 'Masukkan path file update.zip!';
+            resultBox.className = 'verify-result err';
+            resultBox.style.display = 'block';
+            return;
+        }
+        // Validasi path
+        if (!path.startsWith('/')) {
+            resultBox.innerText = 'Path harus dimulai dengan / (slash)';
+            resultBox.className = 'verify-result err';
+            resultBox.style.display = 'block';
+            return;
+        }
+        if (!path.endsWith('.zip')) {
+            resultBox.innerText = 'File harus berekstensi .zip';
             resultBox.className = 'verify-result err';
             resultBox.style.display = 'block';
             return;
@@ -1065,17 +932,31 @@ async function installManual() {
 
     showProgressOverlay();
 
+    let isInstalling = true;
+    let installSuccess = false;
     const es = new EventSource(url);
+
     es.onmessage = function(e) {
+        if (!isInstalling) return;
+
         if (e.data === 'end') {
             es.close();
+            isInstalling = false;
             hideProgressOverlay();
-            alert('Update berhasil diinstall! Halaman akan dimuat ulang.');
-            location.reload();
+
+            if (installSuccess) {
+                alert('Update berhasil diinstall! Halaman akan dimuat ulang.');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert('Instalasi selesai dengan error. Cek log untuk detail.');
+            }
             return;
         }
+
         try {
             const data = JSON.parse(e.data);
+
+            // Update progress bar
             if (data.pct !== null) {
                 document.getElementById('prog-bar').style.width = data.pct + '%';
                 document.getElementById('prog-pct').innerText = data.pct + '%';
@@ -1083,21 +964,44 @@ async function installManual() {
 
                 // Update step indicators
                 if (data.pct >= 90) {
-                    setStepDone(2);
-                    setStepActive(3);
+                    document.getElementById('ps1').className = 'step-num step-done';
+                    document.getElementById('ps1').innerText = '✓';
+                    document.getElementById('ps2').className = 'step-num step-done';
+                    document.getElementById('ps2').innerText = '✓';
+                    document.getElementById('ps3').className = 'step-num step-active';
+                    document.getElementById('ps3').innerText = '3';
                 } else if (data.pct >= 10) {
-                    setStepActive(2);
+                    document.getElementById('ps1').className = 'step-num step-done';
+                    document.getElementById('ps1').innerText = '✓';
+                    document.getElementById('ps2').className = 'step-num step-active';
+                    document.getElementById('ps2').innerText = '2';
                 }
             }
-            if (data.msg) {
-                console.log(data.msg);
+
+            // Track success
+            if (data.msg === 'SUKSES' || data.finished === true) {
+                installSuccess = true;
+                document.getElementById('prog-text').innerText = 'Selesai!';
+                document.getElementById('prog-icon').innerText = '✓';
+                document.getElementById('prog-bar').style.width = '100%';
+                document.getElementById('prog-pct').innerText = '100%';
+            }
+
+            // Track error
+            if (data.msg && data.msg.indexOf('ERROR') === 0) {
+                installSuccess = false;
+                document.getElementById('prog-text').innerText = 'Gagal';
+                document.getElementById('prog-icon').innerText = '✗';
             }
         } catch(err) {}
     };
+
     es.onerror = function() {
+        if (!isInstalling) return;
         es.close();
+        isInstalling = false;
         hideProgressOverlay();
-        alert('Instalasi gagal! Silakan coba lagi.');
+        alert('Koneksi terputus. Silakan coba lagi.');
     };
 }
 
