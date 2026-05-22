@@ -220,6 +220,7 @@ if (isset($_REQUEST['api'])) {
 
         $proc = popen($cmd, 'r');
         if ($proc) {
+            $hasError = false;
             while (!feof($proc)) {
                 $line = fgets($proc);
                 if ($line === false) break;
@@ -228,16 +229,28 @@ if (isset($_REQUEST['api'])) {
                 if (preg_match('/(\d{1,3})%/', $cleanLine, $matches)) {
                     $pct = intval($matches[1]);
                 }
-                echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct]) . "\n\n";
+                if (strpos($cleanLine, 'ERROR') === 0 || strpos($cleanLine, 'FAILED') !== false) {
+                    $hasError = true;
+                }
+                echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct, 'log' => '/sdcard/ota_update.log']) . "\n\n";
                 flush();
 
                 // Jika sudah selesai (SUKSES atau ERROR), tunggu sebentar lalu kirim end
-                if ($cleanLine === 'SUKSES' || strpos($cleanLine, 'ERROR') === 0) {
+                if ($cleanLine === 'SUKSES' || $cleanLine === 'ERROR' || strpos($cleanLine, 'SUKSES') === 0) {
                     usleep(500000); // 0.5 detik
                     break;
                 }
             }
             pclose($proc);
+
+            // Kirim info log file
+            echo "data: " . json_encode([
+                'msg' => 'Log tersimpan di /sdcard/ota_update.log',
+                'pct' => $hasError ? null : 100,
+                'log' => '/sdcard/ota_update.log',
+                'error' => $hasError
+            ]) . "\n\n";
+            flush();
         }
         echo "data: end\n\n";
         flush();
@@ -259,22 +272,35 @@ if (isset($_REQUEST['api'])) {
         $cmd = "sh " . escapeshellarg($script) . " " . escapeshellarg($url) . " " . escapeshellarg($type) . " 2>&1";
         $proc = popen($cmd, 'r');
         if ($proc) {
+            $hasError = false;
             while (!feof($proc)) {
                 $line = fgets($proc);
                 if ($line === false) break;
                 $cleanLine = trim($line);
                 $pct = null;
                 if (preg_match('/(\d{1,3})%/', $cleanLine, $matches)) $pct = intval($matches[1]);
-                echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct]) . "\n\n";
+                if (strpos($cleanLine, 'ERROR') === 0 || strpos($cleanLine, 'FAILED') !== false) {
+                    $hasError = true;
+                }
+                echo "data: " . json_encode(['msg' => $cleanLine, 'pct' => $pct, 'log' => '/sdcard/ota_update.log']) . "\n\n";
                 flush();
 
                 // Jika sudah selesai (SUKSES atau ERROR), tunggu sebentar lalu kirim end
-                if ($cleanLine === 'SUKSES' || strpos($cleanLine, 'ERROR') === 0) {
+                if ($cleanLine === 'SUKSES' || $cleanLine === 'ERROR' || strpos($cleanLine, 'SUKSES') === 0) {
                     usleep(500000); // 0.5 detik
                     break;
                 }
             }
             pclose($proc);
+
+            // Kirim info log file
+            echo "data: " . json_encode([
+                'msg' => 'Log tersimpan di /sdcard/ota_update.log',
+                'pct' => $hasError ? null : 100,
+                'log' => '/sdcard/ota_update.log',
+                'error' => $hasError
+            ]) . "\n\n";
+            flush();
         }
         echo "data: end\n\n";
         flush();
@@ -920,10 +946,10 @@ async function installManual() {
             hideProgressOverlay();
 
             if (installSuccess) {
-                alert('Update berhasil diinstall! Halaman akan dimuat ulang.');
+                alert('Update berhasil diinstall!\n\nLog tersimpan di: /sdcard/ota_update.log');
                 setTimeout(() => location.reload(), 500);
             } else {
-                alert('Instalasi selesai dengan error. Cek log untuk detail.');
+                alert('Instalasi gagal.\n\nLog error tersedia di: /sdcard/ota_update.log\n\nBuka Terminal dan ketik:\ncat /sdcard/ota_update.log');
             }
             return;
         }
@@ -963,10 +989,15 @@ async function installManual() {
             }
 
             // Track error
-            if (data.msg && data.msg.indexOf('ERROR') === 0) {
+            if (data.error || (data.msg && data.msg.indexOf('ERROR') === 0)) {
                 installSuccess = false;
                 document.getElementById('prog-text').innerText = 'Gagal';
                 document.getElementById('prog-icon').innerText = '✗';
+            }
+
+            // Tampilkan link log
+            if (data.log) {
+                console.log('Log file: ' + data.log);
             }
         } catch(err) {}
     };
@@ -976,7 +1007,7 @@ async function installManual() {
         es.close();
         isInstalling = false;
         hideProgressOverlay();
-        alert('Koneksi terputus. Silakan coba lagi.');
+        alert('Koneksi terputus.\n\nLog tersedia di: /sdcard/ota_update.log');
     };
 }
 
