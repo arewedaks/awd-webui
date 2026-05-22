@@ -1,6 +1,6 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
-if (file_exists('/data/adb/php8/version.php')) require_once '/data/adb/php8/version.php';
+if (file_exists('/data/adb/php8/files/www/auth/version.php')) require_once '/data/adb/php8/files/www/auth/version.php';
 else define('CURRENT_VERSION', '0.0.0');
 
 function decrypt_link($code) {
