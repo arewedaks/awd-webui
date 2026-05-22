@@ -113,55 +113,39 @@ if (isset($_REQUEST['api'])) {
         }
 
         // Cek struktur update.zip yang diharapkan
-        $requiredFiles = ['META-INF/com/google/android/updater-script'];
+        // Struktur user:
+        // update.zip
+        // ├── files/
+        // ├── scripts/
+        // ├── modules/
+        // ├── version.php     <- di root
+        // ├── readme.md
+        // └── install.sh
         $foundFiles = [];
+        $foundDirs = [];
         for ($i = 0; $i < $zip->numFiles; $i++) {
-            $foundFiles[] = $zip->getNameIndex($i);
-        }
-
-        // Cek apakah ada files/scripts di root atau di dalam folder
-        $hasValidStructure = false;
-        $extractBase = '';
-
-        // Mode 1: Files langsung di root zip
-        if (in_array('files/version.php', $foundFiles) || in_array('scripts/', $foundFiles) ||
-            in_array('www/version.php', $foundFiles) || in_array('install.sh', $foundFiles)) {
-            $hasValidStructure = true;
-            $extractBase = '';
-        }
-
-        // Mode 2: Files di dalam folder (misal update.zip/files/)
-        if (!$hasValidStructure) {
-            foreach ($foundFiles as $f) {
-                if (preg_match('/^(files|scripts|www)\/.+/', $f) || preg_match('/^(install\.sh|META-INF)/', $f)) {
-                    $hasValidStructure = true;
-                    $extractBase = '';
-                    break;
-                }
+            $name = $zip->getNameIndex($i);
+            $foundFiles[] = $name;
+            // Deteksi direktori
+            if (preg_match('/^([^\/]+)\/$/', $name, $m)) {
+                $foundDirs[$m[1]] = true;
             }
         }
 
-        // Mode 3: Struktur module (files/ di dalam folder bernama seperti module)
-        if (!$hasValidStructure) {
-            $dirs = [];
-            for ($i = 0; $i < $zip->numFiles; $i++) {
-                $name = $zip->getNameIndex($i);
-                if (preg_match('/^([^\/]+)\//', $name, $m)) $dirs[$m[1]] = true;
-            }
-            foreach (array_keys($dirs) as $dir) {
-                if (in_array($dir . '/files/', $foundFiles) || in_array($dir . '/install.sh', $foundFiles)) {
-                    $hasValidStructure = true;
-                    $extractBase = $dir . '/';
-                    break;
-                }
-            }
-        }
+        // Cek apakah ada: version.php di root + minimal 1 folder (files/scripts/modules)
+        $hasVersionPhp = in_array('version.php', $foundFiles);
+        $hasFilesDir = isset($foundDirs['files']) || in_array('files/', $foundFiles);
+        $hasScriptsDir = isset($foundDirs['scripts']) || in_array('scripts/', $foundFiles);
+        $hasModulesDir = isset($foundDirs['modules']) || in_array('modules/', $foundFiles);
+        $hasInstallSh = in_array('install.sh', $foundFiles);
+
+        $hasValidStructure = ($hasFilesDir || $hasScriptsDir || $hasModulesDir || $hasInstallSh);
 
         $zip->close();
 
         if (!$hasValidStructure) {
             @unlink($tmpFile);
-            echo json_encode(['status' => 'error', 'msg' => 'File bukan update yang valid. Struktur ZIP tidak sesuai.']);
+            echo json_encode(['status' => 'error', 'msg' => 'File bukan update yang valid. Minimal harus ada folder (files/, scripts/, modules/) atau install.sh.']);
             exit;
         }
 
@@ -173,22 +157,13 @@ if (isset($_REQUEST['api'])) {
         $zip->extractTo($verifyDir);
         $zip->close();
 
-        // Cari version.php di berbagai lokasi
+        // Cari version.php di root
         $updateVer = null;
-        $versionPaths = [
-            $extractBase . 'files/version.php',
-            $extractBase . 'www/version.php',
-            'files/version.php',
-            'www/version.php'
-        ];
-        foreach ($versionPaths as $vp) {
-            $fullPath = $verifyDir . '/' . $vp;
-            if (file_exists($fullPath)) {
-                $content = file_get_contents($fullPath);
-                if (preg_match("/define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"](\d+\.\d+(?:\.\d+)?)['\"]/", $content, $m)) {
-                    $updateVer = $m[1];
-                    break;
-                }
+        $versionPath = $verifyDir . '/version.php';
+        if (file_exists($versionPath)) {
+            $content = file_get_contents($versionPath);
+            if (preg_match("/define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"](\d+\.\d+(?:\.\d+)?)['\"]/", $content, $m)) {
+                $updateVer = $m[1];
             }
         }
 
