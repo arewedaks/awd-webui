@@ -1,7 +1,16 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
-if (file_exists('/data/adb/php8/files/www/version.php')) require_once '/data/adb/php8/files/www/version.php';
-else define('CURRENT_VERSION', '0.0.0');
+$modulePropPath = '/data/adb/modules/php8-webserver/module.prop';
+if (file_exists($modulePropPath)) {
+    $content = file_get_contents($modulePropPath);
+    if (preg_match('/^version=(.+)$/m', $content, $m)) {
+        define('CURRENT_VERSION', trim($m[1]));
+    } else {
+        define('CURRENT_VERSION', '0.0.0');
+    }
+} else {
+    define('CURRENT_VERSION', '0.0.0');
+}
 
 function decrypt_link($code) {
     $binary_paths = ['/data/adb/php8/files/bin/crypto.so', '/data/adb/php8/files/bin/safe_decrypt'];
@@ -148,7 +157,8 @@ if (isset($_REQUEST['api'])) {
         // ├── files/
         // ├── scripts/
         // ├── modules/
-        // ├── version.php     <- di root
+        // │   └── php8-webserver/
+        // │       └── module.prop  <- versi di sini
         // ├── readme.md
         // └── install.sh
         $foundFiles = [];
@@ -162,8 +172,7 @@ if (isset($_REQUEST['api'])) {
             }
         }
 
-        // Cek apakah ada: version.php di root + minimal 1 folder (files/scripts/modules)
-        $hasVersionPhp = in_array('version.php', $foundFiles);
+        // Cek apakah ada: minimal 1 folder (files/scripts/modules)
         $hasFilesDir = isset($foundDirs['files']) || in_array('files/', $foundFiles);
         $hasScriptsDir = isset($foundDirs['scripts']) || in_array('scripts/', $foundFiles);
         $hasModulesDir = isset($foundDirs['modules']) || in_array('modules/', $foundFiles);
@@ -171,31 +180,38 @@ if (isset($_REQUEST['api'])) {
 
         $hasValidStructure = ($hasFilesDir || $hasScriptsDir || $hasModulesDir || $hasInstallSh);
 
-        $zip->close();
-
         if (!$hasValidStructure) {
+            $zip->close();
             @unlink($tmpFile);
             echo json_encode(['status' => 'error', 'msg' => 'File bukan update yang valid. Minimal harus ada folder (files/, scripts/, modules/) atau install.sh.']);
             exit;
         }
 
-        // Ekstrak sementara untuk cek versi
+        // Ekstrak sementara untuk cek versi dari module.prop
         $verifyDir = '/sdcard/update_verify_' . uniqid();
         mkdir($verifyDir, 0755, true);
-        $zip = new ZipArchive();
-        $zip->open($zipPath);
         $zip->extractTo($verifyDir);
         $zip->close();
 
-        // Cari version.php di root
+        // Cari module.prop di dalam update.zip
         $updateVer = null;
-        $versionPath = $verifyDir . '/version.php';
-        if (file_exists($versionPath)) {
-            $content = file_get_contents($versionPath);
-            if (preg_match("/define\s*\(\s*['\"]CURRENT_VERSION['\"]\s*,\s*['\"](\d+\.\d+(?:\.\d+)?)['\"]/", $content, $m)) {
-                $updateVer = $m[1];
+        $modulePropFiles = [
+            $verifyDir . '/modules/php8-webserver/module.prop',
+            $verifyDir . '/module.prop',
+        ];
+        foreach ($modulePropFiles as $mpPath) {
+            if (file_exists($mpPath)) {
+                $content = file_get_contents($mpPath);
+                if (preg_match('/^version=(.+)$/m', $content, $m)) {
+                    $updateVer = trim($m[1]);
+                }
+                break;
             }
         }
+
+        // Cleanup
+        shell_exec("rm -rf " . escapeshellarg($verifyDir));
+        @unlink($tmpFile);
 
         // Bandingkan versi
         $canInstall = false;
@@ -204,13 +220,12 @@ if (isset($_REQUEST['api'])) {
             $verMsg = $updateVer;
             $canInstall = version_compare($updateVer, CURRENT_VERSION, '>');
         } else {
-            // Jika tidak ada version.php, tetap izinkan (mungkin full update)
+            // Jika tidak ada versi, tetap izinkan (full update)
             $canInstall = true;
             $verMsg = 'Full Package';
         }
 
         // Cleanup
-        shell_exec("rm -rf " . escapeshellarg($verifyDir));
         @unlink($tmpFile);
 
         echo json_encode([

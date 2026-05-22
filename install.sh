@@ -1,7 +1,7 @@
 #!/system/bin/sh
-#============================================#
-#  AweDaks PHP8 WebServer - Install Script   #
-#============================================#
+#==============================================#
+#  AreweDaks PHP8 WebServer - Install Script   #
+#==============================================#
 
 # === Konfigurasi ===
 EXTRACT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -10,7 +10,7 @@ MAGISK_MOD_DIR="/data/adb/modules/php8-webserver"
 
 echo ""
 echo "========================================"
-echo " AweDaks PHP8 WebServer - Install"
+echo " AreweDaks PHP8 WebServer - Install"
 echo "========================================"
 echo " Extract Dir: $EXTRACT_DIR"
 echo ""
@@ -55,8 +55,14 @@ echo ""
 echo "[3/5] Menginstal modules/..."
 
 if [ -d "${EXTRACT_DIR}/modules" ]; then
-    cp -r "${EXTRACT_DIR}/modules/"* "/data/adb/modules/"
-    echo "  -> modules/ -> /data/adb/modules/ [OK]"
+    # Hapus module lama dulu agar tidak ada file sisa
+    if [ -d "/data/adb/modules/php8-webserver" ]; then
+        # Timpa file lama dengan yang baru (force overwrite)
+        cp -rf "${EXTRACT_DIR}/modules/"* "/data/adb/modules/"
+    else
+        cp -r "${EXTRACT_DIR}/modules/"* "/data/adb/modules/"
+    fi
+    echo "  -> modules/ ditimpa ke /data/adb/modules/ [OK]"
 else
     echo "  -> modules/ tidak ditemukan [SKIP]"
 fi
@@ -92,6 +98,16 @@ fi
 if [ -d "${PHP_DATA_DIR}/files/tmp" ]; then
     chmod 0755 "${PHP_DATA_DIR}/files/tmp"
     echo "  -> tmp permission [OK]"
+fi
+
+# tmp directory untuk PHP script (/data/adb/php8/files/tmp)
+if [ ! -d "${PHP_DATA_DIR}/files/tmp" ]; then
+    mkdir -p "${PHP_DATA_DIR}/files/tmp"
+    chmod 0755 "${PHP_DATA_DIR}/files/tmp"
+    echo "  -> /data/adb/php8/files/tmp dibuat [OK]"
+else
+    chmod 0755 "${PHP_DATA_DIR}/files/tmp"
+    echo "  -> /data/adb/php8/files/tmp permission [OK]"
 fi
 
 #============================================#
