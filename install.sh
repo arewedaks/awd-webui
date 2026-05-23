@@ -68,25 +68,10 @@ else
 fi
 
 #============================================#
-# 4. Copy version.php ke /data/adb/php8/files/www/
+# 4. Set Permission Akhir
 #============================================#
 echo ""
-echo "[4/5] Menginstal version.php..."
-
-if [ -f "${EXTRACT_DIR}/version.php" ]; then
-    mkdir -p "${PHP_DATA_DIR}/files/www"
-    cp "${EXTRACT_DIR}/version.php" "${PHP_DATA_DIR}/files/www/"
-    chmod 0644 "${PHP_DATA_DIR}/files/www/version.php"
-    echo "  -> version.php -> ${PHP_DATA_DIR}/files/www/version.php [OK]"
-else
-    echo "  -> version.php tidak ditemukan [SKIP]"
-fi
-
-#============================================#
-# 5. Set Permission Akhir
-#============================================#
-echo ""
-echo "[5/5] Mengatur permissions akhir..."
+echo "[4/4] Mengatur permissions akhir..."
 
 # www directory
 if [ -d "${PHP_DATA_DIR}/files/www" ]; then

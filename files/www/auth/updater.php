@@ -818,8 +818,8 @@ function startUpdate() {
         }
         try {
             const data = JSON.parse(e.data);
-            if(data.msg && data.pct === null) log(data.msg);
-            if(data.pct !== null) { bar.style.width = data.pct + '%'; pctTxt.innerText = data.pct + '%'; statusTxt.innerText = 'Mengunduh ' + data.pct + '%'; }
+            if(data.pct !== null) { bar.style.width = data.pct + '%'; pctTxt.innerText = data.pct + '%'; statusTxt.innerText = 'Menginstal...'; }
+            else if(data.msg) log(data.msg);
         } catch(err) {}
     };
     es.onerror = function() {
@@ -1050,11 +1050,11 @@ async function installManual() {
             if (data.pct !== null) {
                 document.getElementById('prog-bar').style.width = data.pct + '%';
                 document.getElementById('prog-pct').innerText = data.pct + '%';
-                document.getElementById('prog-text').innerText = 'Menginstal ' + data.pct + '%';
+                document.getElementById('prog-text').innerText = 'Menginstal...';
                 if (data.pct >= 90) { setProgressDone(1); setProgressDone(2); setProgressActive(3); }
                 else if (data.pct >= 10) { setProgressDone(1); setProgressActive(2); }
             }
-            if (data.msg === 'SUKSES' || data.finished === true) {
+            else if (data.msg === 'SUKSES' || data.finished === true) {
                 installSuccess = true;
                 document.getElementById('prog-icon').innerText = '✅';
                 document.getElementById('prog-text').innerText = 'Selesai!';
