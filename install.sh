@@ -73,12 +73,15 @@ fi
 echo ""
 echo "[4/4] Mengatur permissions & verifikasi folder..."
 
-# Folder yang diperbolehkan di /data/adb/php8
+# Folder dan file yang diperbolehkan di /data/adb/php8
 ALLOWED_FOLDERS="files scripts update_temp"
 
-# Hapus folder yang tidak diperbolehkan
+# Hapus folder dan file yang tidak diperbolehkan
 if [ -d "${PHP_DATA_DIR}" ]; then
     for item in "${PHP_DATA_DIR}"/*; do
+        # Skip jika tidak ada item
+        [ -e "$item" ] || continue
+
         if [ -d "$item" ]; then
             folder_name=$(basename "$item")
             if echo "$ALLOWED_FOLDERS" | grep -qw "$folder_name"; then
@@ -88,6 +91,10 @@ if [ -d "${PHP_DATA_DIR}" ]; then
                 rm -rf "$item"
                 echo "  -> Hapus folder tidak valid: $folder_name [OK]"
             fi
+        elif [ -f "$item" ]; then
+            # Hapus juga file yang tidak valid
+            rm -f "$item"
+            echo "  -> Hapus file tidak valid: $(basename "$item") [OK]"
         fi
     done
 fi
