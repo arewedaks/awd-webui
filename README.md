@@ -3,10 +3,10 @@ This not for download, this file Update for My WebUI
 this suport php8 android 10 - 16 maybe.
 ## Preview
   ### Dark Mode
-  ![Dark Mode](images/dark.png)
+  ![Dark Mode](images/dark.webp)
 
   ### Light Mode
-  ![Light Mode](images/light.png)
+  ![Light Mode](images/light.webp)
 
 if you want this WebUI
 contact me in telegram
