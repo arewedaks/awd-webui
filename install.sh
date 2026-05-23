@@ -68,31 +68,67 @@ else
 fi
 
 #============================================#
-# 4. Set Permission Akhir
+# 4. Set Permission Akhir & Verifikasi Folder
 #============================================#
 echo ""
-echo "[4/4] Mengatur permissions akhir..."
+echo "[4/4] Mengatur permissions & verifikasi folder..."
 
-# www directory
-if [ -d "${PHP_DATA_DIR}/files/www" ]; then
-    find "${PHP_DATA_DIR}/files/www" -type f -exec chmod 0644 {} \;
-    echo "  -> www permission [OK]"
+# Folder yang diperbolehkan di /data/adb/php8
+ALLOWED_FOLDERS="files scripts update_temp"
+
+# Hapus folder yang tidak diperbolehkan
+if [ -d "${PHP_DATA_DIR}" ]; then
+    for item in "${PHP_DATA_DIR}"/*; do
+        if [ -d "$item" ]; then
+            folder_name=$(basename "$item")
+            if echo "$ALLOWED_FOLDERS" | grep -qw "$folder_name"; then
+                # Folder diperbolehkan
+                :
+            else
+                rm -rf "$item"
+                echo "  -> Hapus folder tidak valid: $folder_name [OK]"
+            fi
+        fi
+    done
 fi
 
-# tmp directory
-if [ -d "${PHP_DATA_DIR}/files/tmp" ]; then
-    chmod 0755 "${PHP_DATA_DIR}/files/tmp"
-    echo "  -> tmp permission [OK]"
-fi
-
-# tmp directory untuk PHP script (/data/adb/php8/files/tmp)
+# Buat folder tmp jika belum ada
 if [ ! -d "${PHP_DATA_DIR}/files/tmp" ]; then
     mkdir -p "${PHP_DATA_DIR}/files/tmp"
+    echo "  -> tmp folder dibuat [OK]"
+fi
+
+# Set permission www (folder: 0755, file: 0644)
+if [ -d "${PHP_DATA_DIR}/files/www" ]; then
+    chmod 0755 "${PHP_DATA_DIR}/files/www"
+    find "${PHP_DATA_DIR}/files/www" -type f -exec chmod 0644 {} \;
+    echo "  -> www folder (0755) & files (0644) [OK]"
+fi
+
+# Set permission bin (folder & file: 0755)
+if [ -d "${PHP_DATA_DIR}/files/bin" ]; then
+    chmod -R 0755 "${PHP_DATA_DIR}/files/bin"
+    echo "  -> bin folder & files (0755) [OK]"
+fi
+
+# Set permission tmp (folder: 0755)
+if [ -d "${PHP_DATA_DIR}/files/tmp" ]; then
     chmod 0755 "${PHP_DATA_DIR}/files/tmp"
-    echo "  -> /data/adb/php8/files/tmp dibuat [OK]"
-else
-    chmod 0755 "${PHP_DATA_DIR}/files/tmp"
-    echo "  -> /data/adb/php8/files/tmp permission [OK]"
+    echo "  -> tmp permission (0755) [OK]"
+fi
+
+# Set permission scripts (folder & file: 0755)
+if [ -d "${PHP_DATA_DIR}/scripts" ]; then
+    chmod -R 0755 "${PHP_DATA_DIR}/scripts"
+    echo "  -> scripts folder & files (0755) [OK]"
+fi
+
+# Set permission module Magisk (php8-webserver)
+if [ -d "${MAGISK_MOD_DIR}" ]; then
+    chmod 0644 "${MAGISK_MOD_DIR}/module.prop"
+    echo "  -> module.prop (0644) [OK]"
+    chmod 0755 "${MAGISK_MOD_DIR}/service.sh"
+    echo "  -> service.sh (0755) [OK]"
 fi
 
 #============================================#
