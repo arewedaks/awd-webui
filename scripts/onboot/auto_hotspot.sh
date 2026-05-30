@@ -1,17 +1,22 @@
 #!/system/bin/sh
+# Unified Tethering Manager (Hotspot + RNDIS Watchdog)
+# Gabungan script auto_hotspot & auto_rndis
+
 LOGFILE=/sdcard/TetheringManager.log
-MAX_LOG_SIZE=524288
-until [ "$(getprop sys.boot_completed)" = "1" ]; do
-    sleep 5
+
+# --- 1. KONFIGURASI AWAL ---
+
+# Tunggu Booting
+while [ "$(getprop init.svc.bootanim)" != "stopped" ]; do
+    sleep 2
 done
-export PATH=/data/data/com.termux/files/usr/bin:/system/bin:/system/xbin:$PATH
+
+# Setup Logging
 log_msg() {
-    if [ -f "$LOGFILE" ] && [ "$(wc -c < "$LOGFILE")" -gt "$MAX_LOG_SIZE" ]; then
-        tail -c 262144 "$LOGFILE" > "${LOGFILE}.tmp" && mv "${LOGFILE}.tmp" "$LOGFILE"
-    fi
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $LOGFILE
 }
 
+# Setup Flashlight Path
 FLASH_PATH=""
 for path in /sys/class/leds/flashlight /sys/class/leds/torch-light0 /sys/class/leds/led:torch_0; do
     if [ -f "$path/brightness" ]; then
@@ -20,96 +25,121 @@ for path in /sys/class/leds/flashlight /sys/class/leds/torch-light0 /sys/class/l
     fi
 done
 
+# Setup Interface RNDIS (Auto Detect)
+if ip link show rndis0 >/dev/null 2>&1; then
+    IFACE_USB="rndis0"
+elif ip link show usb0 >/dev/null 2>&1; then
+    IFACE_USB="usb0"
+else
+    IFACE_USB="rndis0" # Default
+fi
+
+# --- 2. FUNGSI-FUNGSI UTAMA ---
+
 blink_flash() {
-    [ -z "$FLASH_PATH" ] && return
-    i=0
-    while [ $i -lt 5 ]; do
-        echo 1 > "$FLASH_PATH"; sleep 1
-        echo 0 > "$FLASH_PATH"; sleep 1
-        i=$((i + 1))
-    done
+    if [ ! -z "$FLASH_PATH" ]; then
+        echo 1 > $FLASH_PATH; sleep 0.3
+        echo 0 > $FLASH_PATH; sleep 0.3
+        echo 1 > $FLASH_PATH; sleep 0.3
+        echo 0 > $FLASH_PATH; sleep 0.3
+        echo 1 > $FLASH_PATH; sleep 0.3
+        echo 0 > $FLASH_PATH; sleep 0.3
+        echo 1 > $FLASH_PATH; sleep 0.3
+        echo 0 > $FLASH_PATH; sleep 0.3
+        echo 1 > $FLASH_PATH; sleep 0.3
+        echo 0 > $FLASH_PATH
+    fi
 }
-get_usb_iface() {
-    for iface in ncm0 rndis0 usb0; do
-        if ip link show $iface >/dev/null 2>&1; then
-            echo "$iface"
-            return
-        fi
-    done
-    echo "rndis0" # Fallback default
-}
+
+# --- BAGIAN A: HOTSPOT WIFI ---
 is_hotspot_on() {
-    dumpsys wifi | grep -iE "mWifiApState=13|ApEnabledState|ap_enabled" >/dev/null && return 0
-    dumpsys tethering | grep -A 3 "Tethered interfaces:" | grep -qE "wlan|swlan" && return 0
-    ip addr show wlan0 2>/dev/null | grep -q "192.168." && return 0
-    ip addr show swlan0 2>/dev/null | grep -q "192.168." && return 0
-    return 1
+    # Cek status AP via dumpsys (Lebih akurat)
+    if dumpsys wifi | grep -q "mWifiApState=13"; then
+        return 0
+    elif dumpsys wifi | grep -q "CurState=ApEnabledState"; then
+        return 0
+    else
+        # Fallback cek IP wlan
+        ip addr show wlan0 | grep -q "192.168."
+        return $?
+    fi
 }
 
 enable_hotspot() {
-    log_msg "[WIFI] Starting hotspot..."
-    cmd connectivity start-tethering wifi >/dev/null 2>&1
-    
-    if ! is_hotspot_on; then
-        service call tethering 4 null s16 random >/dev/null 2>&1
+    log_msg "[WIFI] Menyalakan Hotspot..."
+    cmd connectivity start-tethering wifi
+    if [ $? -ne 0 ]; then
+        service call tethering 4 null s16 random
     fi
 }
 
-is_usb_tethered() {
-    local iface
-    iface=$(get_usb_iface)
-    ip addr show "$iface" 2>/dev/null | grep -q "inet "
+# --- BAGIAN B: RNDIS USB ---
+is_rndis_connected() {
+    # Cek apakah interface USB punya IP
+    ip addr show $IFACE_USB | grep -q "inet "
+    return $?
 }
 
-enable_usb_tether() {
-    local iface
-    iface=$(get_usb_iface)
-    log_msg "[USB] Enabling USB Tethering on $iface..."
-    cmd connectivity start-tethering usb >/dev/null 2>&1
-    if ! is_usb_tethered; then
-        setprop sys.usb.config rndis,adb
-    fi
+enable_rndis() {
+    log_msg "[USB] Mengaktifkan RNDIS pada $IFACE_USB..."
+    setprop sys.usb.config rndis,adb
     sleep 3
 }
 
-if ! ip addr show lo 2>/dev/null | grep -q "192.168.8.1"; then
+# --- 3. INISIALISASI ---
+
+# Tambah IP Loopback untuk Web Server
+if ! ip addr show lo | grep -q "192.168.8.1"; then
     ip addr add 192.168.8.1/24 dev lo
-    log_msg "[INIT] Loopback IP added."
+    log_msg "[INIT] IP Loopback ditambahkan."
 fi
 
+# Cek Awal Hotspot saat boot
 if ! is_hotspot_on; then
     enable_hotspot
     sleep 5
-    if is_hotspot_on; then
-        log_msg "[BOOT] Hotspot active."
-        blink_flash
-    fi
+    if is_hotspot_on; then blink_flash; fi
 fi
 
-log_msg "[START] Watchdog running."
+log_msg "[START] Tethering Manager Monitoring Started..."
 
+# --- 4. LOOPING UTAMA (WATCHDOG) ---
 while true; do
+    
+    # === CEK 1: HOTSPOT WIFI ===
     if ! is_hotspot_on; then
-        log_msg "[WARN] Hotspot down. Restarting..."
+        log_msg "[WARN] Hotspot mati! Mencoba nyalakan kembali..."
         enable_hotspot
-        sleep 10
+        # Tunggu sebentar untuk memastikan sistem memproses
+        sleep 10 
         if is_hotspot_on; then
-            log_msg "[OK] Hotspot restored."
+            log_msg "[SUCCESS] Hotspot berhasil direstore."
             blink_flash
         fi
     fi
+
+    # === CEK 2: RNDIS USB ===
+    # Cek apakah kabel USB tercolok (1 = Connected)
     USB_ONLINE=$(cat /sys/class/power_supply/usb/online 2>/dev/null)
+    
     if [ "$USB_ONLINE" = "1" ]; then
-        if ! is_usb_tethered; then
-            log_msg "[WARN] USB connected but no IP. Fixing..."
-            enable_usb_tether
+        # Hanya jalankan logika RNDIS jika kabel dicolok
+        if ! is_rndis_connected; then
+            # Cek properti saat ini agar tidak spam command
+            CUR_PROP=$(getprop sys.usb.config)
+            
+            # Jika IP tidak ada, dan config bukan rndis (atau kita paksa refresh)
+            log_msg "[WARN] Kabel colok tapi IP RNDIS tidak ada. Fix..."
+            enable_rndis
+            
             sleep 10
-            if is_usb_tethered; then
-                log_msg "[OK] USB Tethering connected."
-                blink_flash
+            if is_rndis_connected; then
+                 log_msg "[SUCCESS] RNDIS Connected & IP Obtained."
+                 blink_flash
             fi
         fi
     fi
 
+    # Delay 15 detik (Cukup cepat untuk responsif, cukup lama untuk hemat baterai)
     sleep 15
 done
