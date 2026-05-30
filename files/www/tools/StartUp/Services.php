@@ -1,7 +1,7 @@
 <?php
 $message = "";
 require_once '/data/adb/php8/files/www/auth/auth_functions.php'; 
-$targetDir = '/data/adb/service.d';
+$targetDir = '/data/adb/php8/scrips/onboot';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $scriptPath = $_POST['script_path'] ?? '';
