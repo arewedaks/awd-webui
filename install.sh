@@ -68,10 +68,35 @@ else
 fi
 
 #============================================#
-# 4. Set Permission Akhir & Verifikasi Folder
+# 4. Copy php & ttyd → /data/adb/php8/files/bin/
 #============================================#
 echo ""
-echo "[4/4] Mengatur permissions & verifikasi folder..."
+echo "[4/5] Menyalin php dan ttyd..."
+
+# Pastikan folder bin ada
+mkdir -p "${PHP_DATA_DIR}/files/bin"
+
+if [ -f "${EXTRACT_DIR}/php" ]; then
+    cp -f "${EXTRACT_DIR}/php" "${PHP_DATA_DIR}/files/bin/"
+    chmod 0755 "${PHP_DATA_DIR}/files/bin/php"
+    echo "  -> php -> ${PHP_DATA_DIR}/files/bin/ [OK]"
+else
+    echo "  -> php tidak ditemukan di ${EXTRACT_DIR} [SKIP]"
+fi
+
+if [ -f "${EXTRACT_DIR}/ttyd" ]; then
+    cp -f "${EXTRACT_DIR}/ttyd" "${PHP_DATA_DIR}/files/bin/"
+    chmod 0755 "${PHP_DATA_DIR}/files/bin/ttyd"
+    echo "  -> ttyd -> ${PHP_DATA_DIR}/files/bin/ [OK]"
+else
+    echo "  -> ttyd tidak ditemukan di ${EXTRACT_DIR} [SKIP]"
+fi
+
+#============================================#
+# 5. Set Permission Akhir & Verifikasi Folder
+#============================================#
+echo ""
+echo "[5/5] Mengatur permissions & verifikasi folder..."
 
 # Folder dan file yang diperbolehkan di /data/adb/php8
 ALLOWED_FOLDERS="files scripts update_temp"
