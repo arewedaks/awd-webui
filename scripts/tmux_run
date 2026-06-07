@@ -15,40 +15,30 @@ fi
 # Pastikan path ini sesuai dengan instalasi Termux standar
 TERMUX_HOME="/data/data/com.termux/files/home"
 TERMUX_USR="/data/data/com.termux/files/usr"
-TARGET_BIN="${tmux_bin_path}/bash"
+BASH_BIN="${tmux_bin_path}/bash"
+TARGET_BIN="${tmux_bin_path}/tmux"
 
 # 3. AMBIL UID PEMILIK TERMUX
 # Kita ambil UID dari file bash termux agar permission sesuai
-if [ -f "$TARGET_BIN" ]; then
-    user_uid=`stat -c %u ${TARGET_BIN}`
+if [ -f "$BASH_BIN" ]; then
+    user_uid=`stat -c %u ${BASH_BIN}`
 else
-    echo "Error: Bash Termux binary not found at $TARGET_BIN"
+    echo "Error: Bash Termux binary not found at $BASH_BIN"
     exit 1
 fi
 
-# 4. EXPORT ENVIRONMENT (SOLUSI ERROR 'HOME NOT SET')
-# Kita harus meng-export variabel ini agar terbaca oleh shell baru
-export HOME="${TERMUX_HOME}"
-export PREFIX="${TERMUX_USR}"
-export TMPDIR="${TERMUX_USR}/tmp"
-export PATH="${tmux_bin_path}:${PATH}"
-export TERM="xterm-256color"
-export LANG="C.UTF-8"
+# 6. EKSEKUSI BASH / TMUX SEBAGAI USER TERMUX
+# Karena Magisk 'su' selalu melucuti LD_LIBRARY_PATH demi keamanan, 
+# kita mengeksekusi script wrapper statis yang sudah dipindahkan ke folder Termux.
+# Pastikan script install_ttyd_wrapper.sh telah dijalankan saat pemasangan modul!
 
-# 5. PINDAH DIREKTORI KE HOME TERMUX
-if [ -d "${TERMUX_HOME}" ]; then
-    cd "${TERMUX_HOME}"
-else
-    # Fallback jika folder home tidak ada
-    cd /data/local/tmp
-    echo "Warning: Termux home dir not found."
+WRAPPER_SCRIPT="${TERMUX_USR}/tmp/awd_webui_wrapper.sh"
+
+if [ ! -f "$WRAPPER_SCRIPT" ]; then
+    echo "Error: Wrapper script tidak ditemukan. Harap jalankan install_ttyd_wrapper.sh!"
+    # Fallback darurat
+    exec su -m -g $user_uid -G 3003 -G 3004 -G 9997 -G 1015 $user_uid -s $BASH_BIN -- -l
 fi
 
-# 6. EKSEKUSI BASH SEBAGAI USER TERMUX
-# Penjelasan command:
-# exec          : Menggantikan proses saat ini (hemat RAM)
-# setuidgid     : Menjalankan perintah sebagai user ID Termux ($user_uid)
-# env ...       : Memaksa variabel HOME, PREFIX, dll diteruskan ke dalam shell
-# bash -l       : Menjalankan bash sebagai 'login shell' (agar membaca .bashrc)
-
-exec ${busybox_path} setuidgid $user_uid env HOME=$HOME PREFIX=$PREFIX TERM=$TERM $TARGET_BIN -l
+# Eksekusi wrapper menggunakan su. PTY otomatis diwariskan dari ttyd!
+exec su -g $user_uid -G 3003 -G 3004 -G 9997 -G 1015 $user_uid -s "$WRAPPER_SCRIPT"

@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 $p = $_SERVER['HTTP_HOST'];
 $x = explode(':', $p);
 $host = $x[0];
@@ -9,35 +10,14 @@ $host = $x[0];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Manager</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        /* --- CSS VARIABLES (TRANSPARENT GLASSMORPHISM) --- */
         :root {
-            /* LIGHT MODE */
-            --card-bg: rgba(255, 248, 240, 0.15); /* Sangat transparan */
-            --blur: blur(5px);
-            --text-main: #3E2A1C;
-            --text-muted: #7A5C43;
-            --border: rgba(255, 255, 255, 0.5);
-            --primary: #B87333;
-            
-            /* Background area Tab Container */
             --tab-cont-bg: rgba(62, 42, 28, 0.08);
-            
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                /* DARK MODE */
-                --card-bg: rgba(10, 5, 2, 0.2); /* Sangat transparan */
-                --blur: blur(5px);
-                --text-main: #FDF5E6;
-                --text-muted: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.15);
-                --primary: #C19A6B;
-                
                 --tab-cont-bg: rgba(253, 245, 230, 0.08);
-                
-                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
 
@@ -52,6 +32,8 @@ $host = $x[0];
             flex-direction: column;
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
+            max-width: 100%;
+            padding: 12px;
         }
 
         /* --- GLASSMORPHISM NAVBAR --- */
@@ -175,5 +157,6 @@ $host = $x[0];
     });
 </script>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

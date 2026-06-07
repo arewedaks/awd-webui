@@ -1,72 +1,33 @@
 #!/system/bin/sh
 
-# 1. Tangkap Argumen dari PHP
-NEW_SSID="$1"
-NEW_PASS="$2"
 LOG_FILE="/data/local/tmp/wifi_log.txt"
 
-# Fungsi Logging
 log() {
-    echo "$(date) - $1" >> "$LOG_FILE"
+    echo "[$(date '+%H:%M:%S')] $1" >> "$LOG_FILE"
 }
 
-log "Memulai proses ganti wifi (Universal Mode)..."
-log "Target SSID: $NEW_SSID"
+log "AWD Modem: Menerima perintah update konfigurasi."
 
-# 2. Cek File Target (Otomatis)
-# Prioritas ke path APEX (Android 11+)
-if [ -f "/data/misc/apexdata/com.android.wifi/WifiConfigStoreSoftAp.xml" ]; then
-    TARGET="/data/misc/apexdata/com.android.wifi/WifiConfigStoreSoftAp.xml"
-elif [ -f "/data/misc/wifi/WifiConfigStoreSoftAp.xml" ]; then
-    TARGET="/data/misc/wifi/WifiConfigStoreSoftAp.xml"
-elif [ -f "/data/misc/wifi/softap.conf" ]; then
-    TARGET="/data/misc/wifi/softap.conf"
-else
-    log "Error: File konfigurasi tidak ditemukan!"
-    exit 1
-fi
+# 1. Matikan Hotspot dan WiFi
+log "AWD Modem: Mematikan koneksi tethering..."
+# Metode ifconfig dari user (wlan0, wlan1, ap0, dll) khusus WiFi
+for iface in wlan0 wlan1 ap0 swlan; do
+    ifconfig $iface down >/dev/null 2>&1
+done
+# Matikan WiFi
+svc wifi disable >/dev/null 2>&1
 
-log "Target File: $TARGET"
+# 2. Tunggu sebentar agar sistem melepaskan konfigurasi lama
+log "AWD Modem: Menunggu sistem sinkronisasi..."
+sleep 3
 
-# 3. Matikan Wifi & Tethering (PENTING)
-# Matikan tethering secara eksplisit agar config tidak di-lock system
-cmd connectivity stop-tethering
-svc wifi disable
-cmd wifi set-wifi-enabled disabled
-sleep 2
+# 3. Nyalakan kembali Hotspot (AWD Modem LSPosed akan mengambil alih injeksi data di sini)
+log "AWD Modem: Menyalakan kembali Hotspot..."
 
-# 4. Definisi Tool SED
-SED_BIN="sed"
+# Perintah dari user untuk Android 11+
+service call tethering 4 null s16 random >/dev/null 2>&1
+# Perintah dari user untuk Android 10 ke bawah
+service call connectivity 24 i32 0 i32 0 i32 0 s16 random >/dev/null 2>&1
 
-# 5. EKSEKUSI PENGGANTIAN (SED)
-# Kita jalankan beberapa perintah sed untuk mencakup berbagai format XML Android.
-# Sed tidak akan error jika pola tidak ditemukan, jadi aman dijalankan berurutan.
-
-# --- Tipe 1: Format Lama/Simpel (Android 10 ke bawah / Vendor Skin tertentu) ---
-# Format: <string name="SSID">Namanya</string>
-$SED_BIN -i "s|<string name=\"SSID\">.*</string>|<string name=\"SSID\">$NEW_SSID</string>|" "$TARGET"
-$SED_BIN -i "s|<string name=\"Passphrase\">.*</string>|<string name=\"Passphrase\">$NEW_PASS</string>|" "$TARGET"
-
-# --- Tipe 2: Format Baru (Android 11 - 16 AOSP/Pixel) ---
-# Format: <string name="WifiSsid">&quot;Namanya&quot;</string>
-# Penjelasan: \&quot; adalah cara menulis &quot; agar dibaca sebagai teks literal oleh sed
-
-# Ganti SSID (Tag: WifiSsid dengan &quot;)
-$SED_BIN -i "s|<string name=\"WifiSsid\">\&quot;.*\&quot;</string>|<string name=\"WifiSsid\">\&quot;$NEW_SSID\&quot;</string>|" "$TARGET"
-
-# Ganti Password (Tag: Passphrase dengan &quot;)
-$SED_BIN -i "s|<string name=\"Passphrase\">\&quot;.*\&quot;</string>|<string name=\"Passphrase\">\&quot;$NEW_PASS\&quot;</string>|" "$TARGET"
-
-# Ganti Password Alternatif (Tag: PreSharedKey dengan &quot; - Beberapa vendor pakai ini)
-$SED_BIN -i "s|<string name=\"PreSharedKey\">\&quot;.*\&quot;</string>|<string name=\"PreSharedKey\">\&quot;$NEW_PASS\&quot;</string>|" "$TARGET"
-
-# 6. Perbaiki Izin File (Wajib!)
-# Kembalikan owner ke system/wifi agar Android bisa membacanya saat boot
-chown 1000:1000 "$TARGET"
-chmod 600 "$TARGET"
-
-# 7. Sync ke Disk
-sync
-
-log "Konfigurasi disimpan. Meminta reboot..."
+log "AWD Modem: Hotspot berhasil di-restart dengan konfigurasi baru!"
 echo "SUCCESS"

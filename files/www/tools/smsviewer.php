@@ -107,33 +107,19 @@ sort($uniqueSenders);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SMS Manager</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        /* --- CSS VARIABLES (VISIONOS CHOCOLATE) --- */
         :root {
-            --card-bg: rgba(255, 248, 240, 0.15); 
-            --blur: blur(5px);
-            --text-main: #3E2A1C;
-            --text-sub: #7A5C43;
-            --border: rgba(255, 255, 255, 0.4);
             --border-dashed: rgba(122, 92, 67, 0.15);
             --inp-bg: rgba(62, 42, 28, 0.08); 
-            --primary: #B87333; 
             --primary-bg: rgba(184, 115, 51, 0.15);
-            --danger: #ff3b30;
             --danger-bg: rgba(255, 59, 48, 0.15);
-            --accent: rgba(184, 115, 51, 0.15);
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
             --radius: 20px;
             --inner-radius: 12px;
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --card-bg: rgba(10, 5, 2, 0.2); 
-                --text-main: #FDF5E6;
-                --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.12);
                 --inp-bg: rgba(253, 245, 230, 0.08); 
-                --primary: #C19A6B; 
                 --primary-bg: rgba(193, 154, 107, 0.2);
             }
         }
@@ -286,5 +272,6 @@ sort($uniqueSenders);
     <script>
         setTimeout(() => { if(document.getElementById('notif')) document.getElementById('notif').style.display = 'none'; }, 2500);
     </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

@@ -93,6 +93,35 @@ else
 fi
 
 #============================================#
+# 4.5. Install TTYD Termux Wrapper
+#============================================#
+echo ""
+echo "[4.5/5] Menginstal TTYD Termux Wrapper..."
+
+TERMUX_USR="/data/data/com.termux/files/usr"
+WRAPPER_SRC="${EXTRACT_DIR}/scripts/awd_webui_wrapper.sh"
+WRAPPER_DEST="${TERMUX_USR}/tmp/awd_webui_wrapper.sh"
+
+if [ -f "$WRAPPER_SRC" ]; then
+    if [ ! -d "${TERMUX_USR}/tmp" ]; then
+        mkdir -p "${TERMUX_USR}/tmp"
+    fi
+    
+    BASH_BIN="${TERMUX_USR}/bin/bash"
+    if [ -f "$BASH_BIN" ]; then
+        USER_UID=$(stat -c %u "$BASH_BIN")
+        cp -f "$WRAPPER_SRC" "$WRAPPER_DEST"
+        chmod 0755 "$WRAPPER_DEST"
+        chown $USER_UID:$USER_UID "$WRAPPER_DEST"
+        echo "  -> awd_webui_wrapper.sh -> ${TERMUX_USR}/tmp/ [OK]"
+    else
+        echo "  -> Termux bash tidak ditemukan. (Termux tidak terinstal?) [SKIP]"
+    fi
+else
+    echo "  -> awd_webui_wrapper.sh tidak ditemukan di ${EXTRACT_DIR}/scripts [SKIP]"
+fi
+
+#============================================#
 # 5. Set Permission Akhir & Verifikasi Folder
 #============================================#
 echo ""

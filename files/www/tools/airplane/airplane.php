@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 $p = $_SERVER['HTTP_HOST'];
 $x = explode(':', $p);
 $host = $x[0];
@@ -9,26 +10,9 @@ $host = $x[0];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Network Manager</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        :root {
-            --primary: #B87333; 
-            --accent: rgba(184, 115, 51, 0.15);
-            --border-glass: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px);
-            --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C;
-            --text-muted: #7A5C43;
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --card-bg: rgba(10, 5, 2, 0.2);
-                --text-main: #FDF5E6;
-                --text-muted: #C0B2A2;
-                --border-glass: rgba(255, 255, 255, 0.12);
-                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            }
-        }
+        /* Replaced by style.css */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
@@ -58,7 +42,7 @@ $host = $x[0];
             gap: 6px;
             width: 100%;
             max-width: 400px;
-            border: 1px solid var(--border-glass);
+            border: 1px solid var(--border);
             box-shadow: var(--shadow);
         }
         .tab {
@@ -68,7 +52,7 @@ $host = $x[0];
             cursor: pointer;
             font-size: 0.85rem;
             font-weight: 700;
-            color: var(--text-muted);
+            color: var(--text-sub);
             border-radius: 14px;
             transition: 0.3s ease;
             user-select: none;
@@ -79,7 +63,7 @@ $host = $x[0];
         .tab.active {
             background: var(--card-bg);
             color: var(--primary);
-            border-color: var(--border-glass);
+            border-color: var(--border);
             box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.1);
         }
         .container {
@@ -142,5 +126,6 @@ $host = $x[0];
     });
 </script>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

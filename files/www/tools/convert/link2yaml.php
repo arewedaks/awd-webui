@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 $save_path = '/data/adb/box/clash/proxy_provider/AKUN-VPN.yaml';
 
 // --- DEFINISI VARIABEL ---
@@ -144,29 +145,16 @@ if (isset($_POST['clean_file'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Account Editor</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        /* --- TEMA VISIONOS CHOCOLATE GLASSMORPHISM (LOCKED) --- */
         :root {
-            --primary: #B87333; 
             --primary-hover: #8B5A2B;
-            --accent: rgba(184, 115, 51, 0.15);
-            --border-glass: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px);
-            --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C;
-            --text-sub: #7A5C43;
             --inp-bg: rgba(62, 42, 28, 0.05);
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --card-bg: rgba(10, 5, 2, 0.2);
-                --text-main: #FDF5E6;
-                --text-sub: #C0B2A2;
                 --inp-bg: rgba(253, 245, 230, 0.08);
-                --border-glass: rgba(255, 255, 255, 0.12);
-                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
 
@@ -189,7 +177,7 @@ if (isset($_POST['clean_file'])) {
             -webkit-backdrop-filter: var(--blur-val);
             padding: 25px; 
             border-radius: 24px; 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             box-shadow: var(--shadow); 
         }
 
@@ -200,7 +188,7 @@ if (isset($_POST['clean_file'])) {
         textarea { 
             width: 100%; 
             background: var(--inp-bg); 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             color: var(--text-main); 
             padding: 15px; 
             border-radius: 14px; 
@@ -218,7 +206,7 @@ if (isset($_POST['clean_file'])) {
             flex: 1; 
             min-width: 120px;
             padding: 14px; 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             border-radius: 12px; 
             cursor: pointer; 
             font-weight: 700; 
@@ -246,7 +234,7 @@ if (isset($_POST['clean_file'])) {
         .item { 
             display: flex; 
             background: var(--inp-bg); 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             border-radius: 12px; 
             overflow: hidden; 
             height: 42px; 
@@ -276,7 +264,7 @@ if (isset($_POST['clean_file'])) {
             background: rgba(239, 68, 68, 0.1); 
             color: #ef4444; 
             border: none;
-            border-left: 1px solid var(--border-glass); 
+            border-left: 1px solid var(--border); 
             font-size: 1.2rem; 
             height: 100%; 
             cursor: pointer;
@@ -388,7 +376,7 @@ if (isset($_POST['clean_file'])) {
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <div style="text-align:center;padding:30px;border:1px dashed var(--border-glass);color:var(--text-sub);border-radius:14px;font-style:italic;margin-top:20px">No accounts found.</div>
+            <div style="text-align:center;padding:30px;border:1px dashed var(--border);color:var(--text-sub);border-radius:14px;font-style:italic;margin-top:20px">No accounts found.</div>
         <?php endif; ?>
     </form>
 
@@ -423,5 +411,6 @@ if (isset($_POST['clean_file'])) {
     }
 </script>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

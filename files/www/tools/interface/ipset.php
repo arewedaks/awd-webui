@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $ip = $_POST['ip'] ?? '192.168.43.1';
     $interface = $_POST['interface'] ?? 'wlan0';
@@ -180,5 +181,6 @@ body {
         });
     </script>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

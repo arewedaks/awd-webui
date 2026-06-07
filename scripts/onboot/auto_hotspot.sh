@@ -1,6 +1,6 @@
 #!/system/bin/sh
-# Unified Tethering Manager (Hotspot + RNDIS Watchdog)
-# Gabungan script auto_hotspot & auto_rndis
+# Hotspot WiFi Watchdog Service
+# Fungsi: Monitor & Auto-enable Hotspot WiFi
 
 LOGFILE=/sdcard/TetheringManager.log
 
@@ -14,6 +14,11 @@ done
 # Setup Logging
 log_msg() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $LOGFILE
+    # Rotasi log untuk mencegah file bengkak (maks ~1000 baris)
+    if [ $(wc -l < "$LOGFILE") -gt 1000 ]; then
+        tail -n 800 "$LOGFILE" > "${LOGFILE}.tmp"
+        mv "${LOGFILE}.tmp" "$LOGFILE"
+    fi
 }
 
 # Setup Flashlight Path
@@ -24,15 +29,6 @@ for path in /sys/class/leds/flashlight /sys/class/leds/torch-light0 /sys/class/l
         break
     fi
 done
-
-# Setup Interface RNDIS (Auto Detect)
-if ip link show rndis0 >/dev/null 2>&1; then
-    IFACE_USB="rndis0"
-elif ip link show usb0 >/dev/null 2>&1; then
-    IFACE_USB="usb0"
-else
-    IFACE_USB="rndis0" # Default
-fi
 
 # --- 2. FUNGSI-FUNGSI UTAMA ---
 
@@ -73,19 +69,6 @@ enable_hotspot() {
     fi
 }
 
-# --- BAGIAN B: RNDIS USB ---
-is_rndis_connected() {
-    # Cek apakah interface USB punya IP
-    ip addr show $IFACE_USB | grep -q "inet "
-    return $?
-}
-
-enable_rndis() {
-    log_msg "[USB] Mengaktifkan RNDIS pada $IFACE_USB..."
-    setprop sys.usb.config rndis,adb
-    sleep 3
-}
-
 # --- 3. INISIALISASI ---
 
 # Tambah IP Loopback untuk Web Server
@@ -115,28 +98,6 @@ while true; do
         if is_hotspot_on; then
             log_msg "[SUCCESS] Hotspot berhasil direstore."
             blink_flash
-        fi
-    fi
-
-    # === CEK 2: RNDIS USB ===
-    # Cek apakah kabel USB tercolok (1 = Connected)
-    USB_ONLINE=$(cat /sys/class/power_supply/usb/online 2>/dev/null)
-    
-    if [ "$USB_ONLINE" = "1" ]; then
-        # Hanya jalankan logika RNDIS jika kabel dicolok
-        if ! is_rndis_connected; then
-            # Cek properti saat ini agar tidak spam command
-            CUR_PROP=$(getprop sys.usb.config)
-            
-            # Jika IP tidak ada, dan config bukan rndis (atau kita paksa refresh)
-            log_msg "[WARN] Kabel colok tapi IP RNDIS tidak ada. Fix..."
-            enable_rndis
-            
-            sleep 10
-            if is_rndis_connected; then
-                 log_msg "[SUCCESS] RNDIS Connected & IP Obtained."
-                 blink_flash
-            fi
         fi
     fi
 

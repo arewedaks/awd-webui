@@ -391,30 +391,16 @@ if (isset($_REQUEST['api'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>System Updater</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
 :root {
-    --primary: #B87333;
     --primary-dark: #8B5A2B;
     --primary-light: #D4956A;
-    --accent: rgba(184, 115, 51, 0.15);
-    --border: rgba(255, 255, 255, 0.4);
-    --blur-val: blur(5px);
-    --card-bg: rgba(255, 248, 240, 0.15);
-    --text-main: #3E2A1C;
-    --text-sub: #7A5C43;
-    --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-    --suc: #32d74b;
-    --dang: #ff3b30;
     --cons: rgba(30, 18, 10, 0.4);
     --radius: 16px;
 }
 @media (prefers-color-scheme: dark) {
     :root {
-        --card-bg: rgba(10, 5, 2, 0.25);
-        --text-main: #FDF5E6;
-        --text-sub: #C0B2A2;
-        --border: rgba(255, 255, 255, 0.12);
-        --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
         --cons: rgba(0, 0, 0, 0.4);
     }
 }
@@ -1110,5 +1096,6 @@ async function cleanupUploadedFile(path) {
     }
 }
 </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

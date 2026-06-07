@@ -44,6 +44,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if (isset($_POST['save_awd_ip'])) {
+        $wifi_ip = $_POST['wifi_ip'] ?? '';
+        $usb_ip = $_POST['usb_ip'] ?? '';
+        $bt_ip = $_POST['bt_ip'] ?? '';
+        $eth_ip = $_POST['eth_ip'] ?? '';
+        
+        if (!empty($wifi_ip)) shell_exec("su -c \"setprop persist.awdap.wifi_ip " . escapeshellarg($wifi_ip) . "\"");
+        if (!empty($usb_ip)) shell_exec("su -c \"setprop persist.awdap.usb_ip " . escapeshellarg($usb_ip) . "\"");
+        if (!empty($bt_ip)) shell_exec("su -c \"setprop persist.awdap.bt_ip " . escapeshellarg($bt_ip) . "\"");
+        if (!empty($eth_ip)) shell_exec("su -c \"setprop persist.awdap.eth_ip " . escapeshellarg($eth_ip) . "\"");
+        
+        $message = "IP Configuration applied.";
+    }
+
+    if (isset($_POST['save_awd_wifi'])) {
+        $ssid = $_POST['ssid'];
+        $pass = $_POST['password'];
+
+        if (strlen($pass) < 8) {
+            $message = "Failed: Min 8 chars.";
+        } else {
+            shell_exec("su -c \"setprop persist.awdap.ssid " . escapeshellarg($ssid) . "\"");
+            shell_exec("su -c \"setprop persist.awdap.pass " . escapeshellarg($pass) . "\"");
+            shell_exec("su -c \"" . BACKEND_SCRIPT . " " . escapeshellarg($ssid) . " " . escapeshellarg($pass) . "\"");
+            $message = "AWD Modem Identity applied.";
+        }
+    }
     if (isset($_POST['save'])) {
         $ssid = $_POST['ssid'];
         $pass = $_POST['password'];
@@ -74,6 +101,9 @@ if (!empty(trim($checkScript))) {
 }
 
 function getCurrentConfig() {
+    $propSsid = trim(shell_exec("su -c \"getprop persist.awdap.ssid\""));
+    $propPass = trim(shell_exec("su -c \"getprop persist.awdap.pass\""));
+
     $paths = [
         '/data/misc/apexdata/com.android.wifi/WifiConfigStoreSoftAp.xml',
         '/data/misc/wifi/WifiConfigStore.xml'
@@ -83,19 +113,32 @@ function getCurrentConfig() {
         $check = shell_exec("su -c \"ls $p 2>/dev/null\"");
         if (!empty(trim($check))) { $content = shell_exec("su -c \"cat $p\""); break; }
     }
-    preg_match('/<string name="SSID">(.*?)<\/string>/', $content, $s);
-    $ssid = $s[1] ?? '';
-    if (empty($ssid)) {
-        preg_match('/<string name="WifiSsid">&quot;(.*?)&quot;<\/string>/', $content, $s_alt);
-        $ssid = $s_alt[1] ?? '';
+    
+    if (!empty($propSsid)) {
+        $ssid = $propSsid;
+    } else {
+        preg_match('/<string name="SSID">(.*?)<\/string>/', $content, $s);
+        $ssid = $s[1] ?? '';
+        if (empty($ssid)) {
+            preg_match('/<string name="WifiSsid">&quot;(.*?)&quot;<\/string>/', $content, $s_alt);
+            $ssid = $s_alt[1] ?? '';
+        }
+        $ssid = str_replace('&quot;', '', $ssid);
     }
-    preg_match('/<string name="Passphrase">(.*?)<\/string>/', $content, $p);
-    $pass = $p[1] ?? '';
-    if (empty($pass)) {
-        preg_match('/<string name="PreSharedKey">&quot;(.*?)&quot;<\/string>/', $content, $p_alt);
-        $pass = $p_alt[1] ?? '';
+
+    if (!empty($propPass)) {
+        $pass = $propPass;
+    } else {
+        preg_match('/<string name="Passphrase">(.*?)<\/string>/', $content, $p);
+        $pass = $p[1] ?? '';
+        if (empty($pass)) {
+            preg_match('/<string name="PreSharedKey">&quot;(.*?)&quot;<\/string>/', $content, $p_alt);
+            $pass = $p_alt[1] ?? '';
+        }
+        $pass = str_replace('&quot;', '', $pass);
     }
-    return ['ssid' => str_replace('&quot;', '', $ssid), 'pass' => str_replace('&quot;', '', $pass)];
+    
+    return ['ssid' => $ssid, 'pass' => $pass];
 }
 
 function getConnectedDevicesDetail() {
@@ -119,6 +162,15 @@ function getConnectedDevicesDetail() {
 $current = getCurrentConfig();
 $deviceList = getConnectedDevicesDetail();
 $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
+
+$awd_wifi_ip = trim(shell_exec("su -c \"getprop persist.awdap.wifi_ip\""));
+if (empty($awd_wifi_ip)) $awd_wifi_ip = "192.168.43.1";
+$awd_usb_ip = trim(shell_exec("su -c \"getprop persist.awdap.usb_ip\""));
+if (empty($awd_usb_ip)) $awd_usb_ip = "192.168.42.1";
+$awd_bt_ip = trim(shell_exec("su -c \"getprop persist.awdap.bt_ip\""));
+if (empty($awd_bt_ip)) $awd_bt_ip = "192.168.44.1";
+$awd_eth_ip = trim(shell_exec("su -c \"getprop persist.awdap.eth_ip\""));
+if (empty($awd_eth_ip)) $awd_eth_ip = "192.168.45.1";
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -126,18 +178,8 @@ $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hotspot Manager Pro</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        :root {
-            --primary: #B87333; --accent: rgba(184, 115, 51, 0.15); --border: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px); --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C; --text-sub: #7A5C43; --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --card-bg: rgba(10, 5, 2, 0.2); --text-main: #FDF5E6; --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.12); --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            }
-        }
         * { box-sizing: border-box; margin: 0; padding: 0; outline: 0; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
@@ -219,22 +261,26 @@ $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
                             <span class="sl"></span>
                         </label>
                     </div>
-                    <div class="grp" style="margin-top:20px">
-                        <label>Loopback Interface (Web Server)</label>
-                        <div style="display:flex; gap:10px">
-                            <input type="text" id="ip_val" value="<?= htmlspecialchars($currentIp) ?>" style="font-family:'SF Mono',monospace; flex:1">
-                            <button id="save_ip_btn" class="bp" style="width:70px; border-radius:14px; cursor:pointer; margin-top:0; padding:0">SET</button>
+                    <form method="POST" style="margin-top:20px">
+                        <div style="font-weight:800; font-size:0.8rem; text-transform:uppercase; margin-bottom:15px; color:var(--primary);">AWD IP Gateways</div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                            <div><label>WiFi</label><input type="text" name="wifi_ip" value="<?= htmlspecialchars($awd_wifi_ip) ?>" style="padding:10px; font-size:0.9rem;"></div>
+                            <div><label>USB</label><input type="text" name="usb_ip" value="<?= htmlspecialchars($awd_usb_ip) ?>" style="padding:10px; font-size:0.9rem;"></div>
+                            <div><label>Bluetooth</label><input type="text" name="bt_ip" value="<?= htmlspecialchars($awd_bt_ip) ?>" style="padding:10px; font-size:0.9rem;"></div>
+                            <div><label>Ethernet</label><input type="text" name="eth_ip" value="<?= htmlspecialchars($awd_eth_ip) ?>" style="padding:10px; font-size:0.9rem;"></div>
                         </div>
-                        <div style="margin-top:8px; font-size:0.65rem; color:var(--text-sub); opacity:0.8;">Format: 192.168.x.x/24 &nbsp;·&nbsp; Script: auto_hotspot.sh</div>
-                    </div>
+                        <div style="font-size:0.65rem; color:var(--text-sub); margin-bottom:10px;">Format: 192.168.x.1 (Subnet /24 ditambahkan otomatis).</div>
+                        <button type="submit" name="save_awd_ip" class="btn bp" style="padding:12px; margin-top:0;">Update IPs</button>
+                    </form>
                 </div>
             </div>
             <div class="col-right">
                 <div class="card">
                     <form method="POST">
+                        <div style="font-weight:800; font-size:0.8rem; text-transform:uppercase; margin-bottom:15px; color:var(--primary);">Hotspot Identity</div>
                         <div class="grp"><label>Hotspot SSID</label><input type="text" name="ssid" value="<?= htmlspecialchars($current['ssid']) ?>" required></div>
                         <div class="grp"><label>Security Password</label><input type="text" name="password" value="<?= htmlspecialchars($current['pass']) ?>" required></div>
-                        <button type="submit" name="save" class="btn bp">Update Hotspot</button>
+                        <button type="submit" name="save_awd_wifi" class="btn bp">Update Identity</button>
                     </form>
                     <form method="POST" onsubmit="return confirm('Full system reboot?')" style="margin-top:0">
                         <button type="submit" name="restart" class="btn bo">Reboot System</button>
@@ -307,17 +353,8 @@ $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
                 .catch(() => { msg("System Error"); this.checked = !s; });
         });
 
-        document.getElementById('save_ip_btn').addEventListener('click', function() {
-            const v = document.getElementById('ip_val').value.trim();
-            if (!v) { msg("IP kosong!"); return; }
-            const fd = new FormData();
-            fd.append('action', 'save_ip');
-            fd.append('ip_address', v);
-            fetch('', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(d => msg(d.message))
-                .catch(() => msg("Error"));
-        });
+
     </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

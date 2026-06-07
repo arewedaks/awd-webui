@@ -126,29 +126,8 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Network Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        :root {
-            --primary: #B87333; --accent: rgba(184, 115, 51, 0.15); --border: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px); --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C; --text-sub: #7A5C43; --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-            --btn-reset: #5D4037;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --card-bg: rgba(10, 5, 2, 0.2); --text-main: #FDF5E6; --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.12); --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-                --btn-reset: #3E2723;
-            }
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            background: transparent !important; color: var(--text-main);
-            padding: 15px; max-width: 900px; margin: 0 auto; padding-bottom: 80px; -webkit-font-smoothing: antialiased;
-        }
-        header { text-align: center; margin-bottom: 25px; }
-        h1 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
-        .sub { font-size: 0.8rem; color: var(--text-sub); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
         .g-stat { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .c-stat { 
             background: var(--card-bg); backdrop-filter: var(--blur-val); -webkit-backdrop-filter: var(--blur-val);
@@ -209,10 +188,10 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
 </head>
 <body>
     <div class="container">
-        <header>
+        <div class="header">
             <h1>Network Monitor</h1>
-            <div class="sub">Traffic Analytics</div>
-        </header>
+            <div class="sub-t">Traffic Analytics</div>
+        </div>
 
         <div class="g-stat">
             <div class="c-stat hl"><span class="v-stat" id="stat_month"><span class="sk">...</span></span><span class="l-stat">Monthly</span></div>
@@ -331,5 +310,6 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
         }
         initData();
     </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

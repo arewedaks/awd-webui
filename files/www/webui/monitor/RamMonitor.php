@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 if (isset($_GET['action'])) {
     header('Content-Type: application/json');
     $a = $_GET['action'];
@@ -54,25 +55,8 @@ if (isset($_GET['action'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>System Monitor</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        :root {
-            --primary: #B87333; --accent: rgba(184, 115, 51, 0.15); --border: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px); --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C; --text-sub: #7A5C43; --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-            --suc: #32d74b; --dang: #ff3b30; --warn: #ff9f0a;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --card-bg: rgba(10, 5, 2, 0.2); --text-main: #FDF5E6; --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.12); --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            }
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            background: transparent !important; color: var(--text-main);
-            padding: 20px; max-width: 1000px; margin: 0 auto; -webkit-font-smoothing: antialiased;
-        }
         .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px dashed rgba(122, 92, 67, 0.2); }
         h1 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
         .badge { font-size: 0.7rem; background: var(--accent); color: var(--primary); padding: 4px 12px; border-radius: 20px; font-weight: 800; border: 1px solid var(--border); }
@@ -217,5 +201,6 @@ function killProc(pid, name) { if(confirm("Kill process " + name + "?")) { fetch
 setInterval(updateStats, 3000);
 updateStats();
 </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

@@ -1,14 +1,10 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
+require_once '/data/adb/php8/files/www/utils.php';
 
 // PERBAIKAN 1: Cek session sebelum start agar tidak bentrok dengan auth_functions.php
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
-}
-
-function run_cmd($cmd) {
-    // Tambahkan 2>&1 agar error message dari shell juga tertangkap (berguna untuk debug)
-    return function_exists('shell_exec') ? shell_exec($cmd . " 2>&1") : false;
 }
 
 // --- FORCE REFRESH HANDLER ---
@@ -36,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['apk_file'])) {
     } elseif (move_uploaded_file($_FILES['apk_file']['tmp_name'], $targetPath)) {
         // PERBAIKAN SECURITY: Gunakan escapeshellarg untuk path file
         $safePath = escapeshellarg($targetPath);
-        $result = run_cmd("pm install -r $safePath");
+        $result = run_root("pm install -r $safePath");
         
         // Hapus file setelah install
         if (file_exists($targetPath)) unlink($targetPath); 
@@ -64,7 +60,7 @@ if (isset($_GET['uninstall'])) {
         $_SESSION['msg'] = ['type' => 'error', 'text' => 'Invalid Package Name!'];
     } else {
         $safePkg = escapeshellarg($pkg);
-        $result = run_cmd("pm uninstall $safePkg");
+        $result = run_root("pm uninstall $safePkg");
         $status = (trim($result) == 'Success');
         
         $_SESSION['msg'] = [
@@ -86,7 +82,7 @@ if ($activeTab == 'manage') {
         $apps = $_SESSION['app_cache'];
     } else {
         // Menggunakan escapeshellcmd tidak perlu di sini karena command fix, tapi good practice
-        $output = run_cmd('pm list packages -f');
+        $output = run_root('pm list packages -f');
         if ($output) {
             $packages = explode("\n", trim($output));
             foreach ($packages as $line) {
@@ -98,10 +94,10 @@ if ($activeTab == 'manage') {
                 $name = $package; 
                 
                 if ($type == 'user') {
-                    // Sanitasi package sebelum masuk ke command dumpsys
-                    $safePkgDump = escapeshellarg($package);
-                    $dump = run_cmd("dumpsys package $safePkgDump | grep 'application: label=' | head -n 1");
-                    if (preg_match('/label=[\'"]?([^\'"\n]+)/', $dump, $lbl)) {
+                    // PERBAIKAN: Gunakan aapt dari Termux untuk ekstrak nama aplikasi yang akurat
+                    $safeApkPath = escapeshellarg($path);
+                    $aaptOutput = run_root("/data/data/com.termux/files/usr/bin/aapt dump badging $safeApkPath | grep 'application-label:' | head -n 1");
+                    if (preg_match('/application-label:[\'"]?([^\'"\n]+)/', $aaptOutput, $lbl)) {
                         $name = trim($lbl[1]);
                     }
                 }

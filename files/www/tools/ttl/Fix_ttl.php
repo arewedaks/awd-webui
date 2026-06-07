@@ -58,28 +58,12 @@ if (isset($_POST['ttl_val'])) $input_value = $_POST['ttl_val'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TTL Manager Pro</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
         :root {
-            --primary: #B87333;
-            --accent: rgba(184, 115, 51, 0.15);
-            --border: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px);
-            --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C;
-            --text-sub: #7A5C43;
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
             --green: #32d74b;
             --red: #ff3b30;
             --yellow: #ffd60a;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --card-bg: rgba(10, 5, 2, 0.2);
-                --text-main: #FDF5E6;
-                --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.12);
-                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            }
         }
         * { box-sizing: border-box; margin: 0; padding: 0; outline: 0; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background: transparent !important; color: var(--text-main); padding: 20px; max-width: 1100px; margin: 0 auto; }
@@ -477,5 +461,6 @@ if (isset($_POST['ttl_val'])) $input_value = $_POST['ttl_val'];
         });
     });
     </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

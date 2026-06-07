@@ -650,5 +650,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         loadContent('/webui/monitor/Overview.php');
     </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

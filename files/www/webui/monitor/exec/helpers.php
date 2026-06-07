@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 // Set header JSON agar dikenali oleh JS
 header('Content-Type: application/json');
 

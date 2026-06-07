@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 $ini_file_path = '/data/adb/box/settings.ini';
 
 function parse_settings_ini($file_path) {
@@ -77,33 +78,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Box Config</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
         /* --- TEMA VISIONOS CHOCOLATE GLASSMORPHISM (LOCKED) --- */
         :root {
-            /* Warna Dasar Chocolate */
-            --primary: #B87333; 
             --primary-hover: #8B5A2B;
-            --accent: rgba(184, 115, 51, 0.15);
-            --border-glass: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px);
-            
-            /* Light Mode */
-            --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C;
-            --text-sub: #7A5C43;
             --inp-bg: rgba(62, 42, 28, 0.05);
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                /* Dark Mode */
-                --card-bg: rgba(10, 5, 2, 0.2);
-                --text-main: #FDF5E6;
-                --text-sub: #C0B2A2;
                 --inp-bg: rgba(253, 245, 230, 0.08);
-                --border-glass: rgba(255, 255, 255, 0.12);
-                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
 
@@ -127,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             -webkit-backdrop-filter: var(--blur-val);
             border-radius: 24px; 
             box-shadow: var(--shadow); 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             padding: 24px; 
             position: relative;
             overflow: hidden;
@@ -153,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%; 
             padding: 12px 16px; 
             border-radius: 12px; 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             background: var(--inp-bg); 
             color: var(--text-main); 
             font-size: 0.95rem; 
@@ -173,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%; 
             background: var(--primary); 
             color: #fff; 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             padding: 16px; 
             border-radius: 14px; 
             font-size: 0.95rem; 
@@ -280,5 +265,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </script>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

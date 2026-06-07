@@ -231,5 +231,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Telegram @Sogek1ng
         </a>
     </footer>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

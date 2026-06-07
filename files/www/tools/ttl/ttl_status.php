@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 header('Content-Type: application/json');
 header('Cache-Control: no-cache');
 

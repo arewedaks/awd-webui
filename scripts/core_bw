@@ -46,7 +46,7 @@ exec_tc() {
     if [ -n "$err" ]; then log "TC_ERR: $cmd -> $err"; fi
 }
 
-mac2id() { echo "0x$(echo $1 | cut -d: -f6)$(echo $1 | cut -d: -f5)"; }
+ip2id() { echo "$1" | awk -F. '{print $4}'; }
 
 get_ip() {
     local m=$(echo "$1" | tr '[:upper:]' '[:lower:]')
@@ -69,11 +69,16 @@ init_iptables() {
     
     # Pasang di FORWARD Chain (Jalur LAN ke WAN)
     iptables -t mangle -I FORWARD -j LIMIT_FWD
+    
+    # TANGKAP SEMUA IP LOKAL UNTUK GLOBAL UPLOAD (Fallback/Default Mark)
+    iptables -t mangle -A LIMIT_FWD -s 192.168.0.0/16 -j MARK --set-mark 9999
 }
 
 reset_tc() {
     log "Resetting Rules..."
-    tc qdisc del dev $LAN_IFACE root >/dev/null 2>&1
+    for iface in $(ip link show | grep -oE '^[0-9]+: [^:]+' | awk '{print $2}' | grep -E 'wlan|ap|rndis|ncm|swlan'); do
+        tc qdisc del dev $iface root >/dev/null 2>&1
+    done
     if [ -n "$WAN_IFACE" ]; then tc qdisc del dev $WAN_IFACE root >/dev/null 2>&1; fi
     
     # Bersihkan IPTables
@@ -109,11 +114,10 @@ apply_user() {
     local ip=$(get_ip $mac)
     
     if [ -n "$ip" ]; then
-        local hex_id=$(mac2id $mac)
-        local dec_id=$(printf "%d" $hex_id)
-        local class_id="1:$hex_id"
+        local dec_id=$(ip2id $ip)
+        local class_id="1:$dec_id"
         
-        log "User $ip -> ID:$hex_id"
+        log "User $ip -> ID:$dec_id"
         
         # --- 1. DOWNLOAD (LAN) ---
         if [ "$raw_down" != "0mbit" ] && [ "$raw_down" != "0kbit" ]; then

@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 // backend.php - Full Logic Ported from Python
 
 error_reporting(0);

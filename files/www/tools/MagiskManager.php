@@ -117,136 +117,20 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'modules';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Magisk Manager</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        /* --- CSS VARIABLES (TRANSPARENT GLASSMORPHISM) --- */
         :root {
-            /* LIGHT MODE */
-            --card-bg: rgba(255, 248, 240, 0.15); /* Sangat transparan */
-            --blur: blur(5px);
-            --text-main: #3E2A1C;
-            --text-sub: #7A5C43;
-            --border: rgba(255, 255, 255, 0.5);
-            --border-dashed: rgba(122, 92, 67, 0.2);
-            
-            --inp-bg: rgba(62, 42, 28, 0.08); 
-            
-            --primary: #B87333; 
-            --primary-bg: rgba(184, 115, 51, 0.15);
-            
-            --danger: #ff3b30; 
-            --danger-bg: rgba(255, 59, 48, 0.15);
-            
-            --warning: #fb8c00; 
-            --warning-bg: rgba(251, 140, 0, 0.15);
-            
-            --success: #34c759; 
-            --success-bg: rgba(52, 199, 89, 0.15);
-            
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-            --radius: 20px;
-            --inner-radius: 12px;
-            
-            /* Glass Console Logs */
             --log-bg: rgba(30, 18, 10, 0.4); 
             --log-text: #FDF5E6; 
             --log-head: rgba(0, 0, 0, 0.2);
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                /* DARK MODE */
-                --card-bg: rgba(10, 5, 2, 0.2); /* Sangat transparan */
-                --blur: blur(5px);
-                --text-main: #FDF5E6;
-                --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.15);
-                --border-dashed: rgba(253, 245, 230, 0.15);
-                
-                --inp-bg: rgba(253, 245, 230, 0.08); 
-                
-                --primary: #C19A6B; 
-                --primary-bg: rgba(193, 154, 107, 0.2);
-                
-                --danger: #ff453a; 
-                --danger-bg: rgba(255, 69, 58, 0.2);
-                
-                --warning: #ff9800; 
-                --warning-bg: rgba(255, 152, 0, 0.2);
-                
-                --success: #32d74b; 
-                --success-bg: rgba(50, 215, 75, 0.2);
-                
-                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-                
                 --log-bg: rgba(0, 0, 0, 0.4); 
                 --log-text: #C19A6B; 
                 --log-head: rgba(255, 255, 255, 0.05);
             }
         }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
-            background: transparent; /* TRANSPARAN TOTAL */
-            color: var(--text-main); 
-            padding: 16px; 
-            max-width: 900px; 
-            margin: 0 auto; 
-            padding-bottom: 80px; 
-            -webkit-font-smoothing: antialiased;
-        }
-        
-        /* --- GLASSMORPHISM CARD --- */
-        .card { 
-            background: var(--card-bg); 
-            backdrop-filter: var(--blur); 
-            -webkit-backdrop-filter: var(--blur);
-            border-radius: var(--radius); 
-            box-shadow: var(--shadow); 
-            border: 1px solid var(--border); 
-            overflow: hidden; 
-            margin-bottom: 16px; 
-            padding: 24px; 
-            position: relative;
-        }
-        .card::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            border-radius: var(--radius); box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none;
-        }
-
-        .title { font-weight: 700; font-size: 1.1rem; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed var(--border-dashed); padding-bottom: 12px; color: var(--text-main); position: relative; z-index: 2; }
-        .title-left { display: flex; align-items: center; gap: 10px; }
-
-        /* --- BUTTONS --- */
-        .btn { border: 1px solid transparent; border-radius: var(--inner-radius); padding: 10px 16px; font-weight: 600; cursor: pointer; transition: 0.2s ease; font-size: 0.85rem; display: inline-flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
-        .btn-sm { padding: 6px 14px; font-size: 0.75rem; border-radius: 8px; }
-        
-        .btn-p { background: rgba(184, 115, 51, 0.85); color: #fff; border: 1px solid var(--border); box-shadow: inset 0 1px 1px rgba(255,255,255,0.2); }
-        .btn-p:hover { background: rgba(184, 115, 51, 1); transform: translateY(-2px); }
-        
-        .btn-d { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(255, 59, 48, 0.3); }
-        .btn-d:hover { background: rgba(255, 59, 48, 0.2); transform: translateY(-2px); }
-        
-        .btn-w { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(251, 140, 0, 0.3); }
-        .btn-w:hover { background: rgba(251, 140, 0, 0.2); transform: translateY(-2px); }
-        
-        .btn-s { background: var(--success-bg); color: var(--success); border: 1px solid rgba(52, 199, 89, 0.3); }
-        .btn-s:hover { background: rgba(52, 199, 89, 0.2); transform: translateY(-2px); }
-        
-        .icon { width: 22px; height: 22px; fill: currentColor; }
-
-        /* --- TABS --- */
-        .tabs { 
-            display: flex; gap: 10px; margin-bottom: 20px; 
-            background: var(--card-bg); 
-            backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-            padding: 6px; 
-            border-radius: var(--radius); 
-            border: 1px solid var(--border); 
-            box-shadow: var(--shadow); 
-        }
-        .tab { flex: 1; text-align: center; padding: 12px; border-radius: 14px; font-weight: 600; text-decoration: none; color: var(--text-sub); transition: 0.2s ease; border: 1px solid transparent; }
-        .tab.active { background: var(--primary-bg); color: var(--primary); border-color: rgba(184, 115, 51, 0.3); box-shadow: inset 0 1px 2px rgba(255,255,255,0.1); }
 
         /* --- MODULE LIST --- */
         .mod-item { border-bottom: 1px dashed var(--border-dashed); padding: 20px 0; position: relative; z-index: 2; transition: 0.2s ease; }
@@ -496,5 +380,6 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'modules';
         </div>
     <?php endif; ?>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

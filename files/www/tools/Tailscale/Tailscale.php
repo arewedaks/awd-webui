@@ -113,36 +113,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tailscale Dashboard</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        /* --- TEMA VISIONOS CHOCOLATE GLASSMORPHISM (LOCKED) --- */
         :root {
-            --primary: #B87333; 
             --primary-h: #8B5A2B;
-            --accent: rgba(184, 115, 51, 0.15);
-            --border-glass: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px);
-            
-            --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C;
-            --text-sub: #7A5C43;
-            
             --dang: #ff3b30; --dang-soft: rgba(255, 59, 48, 0.15); 
             --succ: #34c759; --succ-soft: rgba(52, 199, 89, 0.15);
             --warn: #ff9f0a; --warn-soft: rgba(255, 159, 10, 0.15);
-            
             --term-bg: rgba(30, 18, 10, 0.4); --term-txt: #FDF5E6;
-            --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
             --rad: 24px;
         }
-
         @media (prefers-color-scheme: dark) {
             :root {
-                --card-bg: rgba(10, 5, 2, 0.2);
-                --text-main: #FDF5E6;
-                --text-sub: #C0B2A2;
-                --border-glass: rgba(255, 255, 255, 0.12);
                 --term-bg: rgba(0, 0, 0, 0.4);
-                --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
             }
         }
 
@@ -165,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .logo { font-size: 1.1rem; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; text-transform: uppercase; }
         .logo span { color: var(--primary); }
 
-        .status-pill { font-size: 0.7rem; font-weight: 800; padding: 5px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--border-glass); backdrop-filter: var(--blur-val); }
+        .status-pill { font-size: 0.7rem; font-weight: 800; padding: 5px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--border); backdrop-filter: var(--blur-val); }
         .st-on { background: var(--succ-soft); color: var(--succ); }
         .st-off { background: var(--dang-soft); color: var(--dang); }
         .st-warn { background: var(--warn-soft); color: var(--warn); }
@@ -179,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 35px 20px; 
             text-align: center; 
             box-shadow: var(--shadow); 
-            border: 1px solid var(--border-glass);
+            border: 1px solid var(--border);
             position: relative;
         }
         .hero::after {
@@ -203,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         /* --- CONTROLS --- */
         .ctrl-area { margin-top: 25px; }
         .btn-main { 
-            width: 100%; border: 1px solid var(--border-glass); padding: 18px; 
+            width: 100%; border: 1px solid var(--border); padding: 18px; 
             border-radius: 16px; font-weight: 800; font-size: 0.95rem; 
             cursor: pointer; transition: 0.3s ease; text-transform: uppercase; 
             display: flex; align-items: center; justify-content: center; gap: 12px;
@@ -218,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 25px; 
             border-radius: var(--rad); 
             padding: 24px; 
-            border: 1px solid var(--border-glass); 
+            border: 1px solid var(--border); 
             box-shadow: var(--shadow); 
             backdrop-filter: var(--blur-val);
         }
@@ -228,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--term-bg); padding: 16px; border-radius: 12px; 
             color: var(--term-txt); font-family: 'SF Mono', monospace; 
             font-size: 0.8rem; word-break: break-all; 
-            border: 1px solid var(--border-glass);
+            border: 1px solid var(--border);
             cursor: copy;
         }
         .term-btn { 
@@ -246,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--term-bg); color: var(--text-sub); 
             padding: 15px; border-radius: 12px; font-family: 'SF Mono', monospace; 
             font-size: 0.7rem; height: 160px; overflow-y: auto; 
-            white-space: pre-wrap; display: none; border: 1px solid var(--border-glass); 
+            white-space: pre-wrap; display: none; border: 1px solid var(--border); 
         }
         .log-box.show { display: block; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -381,5 +364,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         updateDashboard();
         setInterval(updateDashboard, 4000); 
     </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

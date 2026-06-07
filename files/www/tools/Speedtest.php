@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 header('Content-Type: text/html; charset=utf-8');
 ?>
 <!DOCTYPE html>
@@ -145,5 +146,6 @@ header('Content-Type: text/html; charset=utf-8');
         </footer>
     </div>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

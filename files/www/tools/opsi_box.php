@@ -234,10 +234,17 @@ $host = $x[0];
         fetch('', { method: 'POST', body: fd })
             .then(r => r.json())
             .then(d => {
-                alert(d.message);
-                if(d.status === 'success') location.reload();
+                if(window.showToast) window.showToast(d.message, d.status);
+                else alert(d.message);
+                
+                if(d.status === 'success') {
+                    setTimeout(() => location.reload(), 1500);
+                }
             })
-            .catch(() => alert("✖ Gagal koneksi ke sistem."))
+            .catch(() => {
+                if(window.showToast) window.showToast("✖ Gagal koneksi ke sistem.", "error");
+                else alert("✖ Gagal koneksi ke sistem.");
+            })
             .finally(() => b.innerText = originalText);
     }
 
@@ -247,5 +254,6 @@ $host = $x[0];
     });
 </script>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

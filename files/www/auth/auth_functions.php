@@ -7,6 +7,12 @@ if (session_status() == PHP_SESSION_NONE) {
 
 // Function to check if the user is logged in
 function checkUserLogin() {
+    // Jika login disabled, abaikan pengecekan
+    if (!isLoginEnabled()) {
+        $_SESSION['login_disabled'] = true; 
+        return;
+    }
+
     if (!isset($_SESSION['user_id'])) {
         header('Location: /auth/login.php'); // Redirect to login page
         exit;
@@ -30,5 +36,12 @@ function isLoginEnabled() {
 // Set a flag in session or query parameter if login is disabled
 if (!isLoginEnabled()) {
     $_SESSION['login_disabled'] = true; 
+} else {
+    // SECURITY PATCH: Otomatis eksekusi penguncian di semua file yang melakukan require file ini
+    $current_file = basename($_SERVER['SCRIPT_FILENAME']);
+    $exempt_files = ['login.php']; // Hindari infinite loop di halaman login itu sendiri
+    if (!in_array($current_file, $exempt_files)) {
+        checkUserLogin();
+    }
 }
 ?>

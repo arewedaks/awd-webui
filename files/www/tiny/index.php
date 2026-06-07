@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 //Default Configuration
 $CONFIG = '{"lang":"en","error_reporting":false,"show_hidden":false,"hide_Cols":false,"theme":"light"}';
 
@@ -3969,7 +3970,8 @@ function fm_show_header_login()
         </div>
         <?php print_external('js-jquery'); ?>
         <?php print_external('js-bootstrap'); ?>
-    </body>
+    <script src="/assets/js/main.js"></script>
+</body>
 
     </html>
 
@@ -6014,7 +6016,8 @@ function fm_show_header_login()
             </script>
         <?php endif; ?>
         <div id="snackbar"></div>
-    </body>
+    <script src="/assets/js/main.js"></script>
+</body>
 
     </html>
 <?php

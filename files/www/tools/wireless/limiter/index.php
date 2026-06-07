@@ -1,6 +1,6 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
-$coreScript = '/data/adb/php8/scripts/onboot/limiter_mac.sh';
+$coreScript = '/data/adb/php8/scripts/core_bw';
 $ruleFile   = __DIR__ . '/rules.txt';
 $dbFile     = __DIR__ . '/limits_mac.json';
 $cfgFile    = '/data/adb/php8/files/config/onboot.cfg';
@@ -96,18 +96,8 @@ $isBootEnabled = (strpos($cfgContent, 'limiter_mac=1') !== false);
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bandwidth Manager</title>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        :root {
-            --primary: #B87333; --accent: rgba(184, 115, 51, 0.15); --border: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px); --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C; --text-sub: #7A5C43; --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --card-bg: rgba(10, 5, 2, 0.2); --text-main: #FDF5E6; --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.12); --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            }
-        }
         * { box-sizing: border-box; margin: 0; padding: 0; outline: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
@@ -260,5 +250,6 @@ function openMod(mac) {
     document.getElementById('mod').style.display = 'flex';
 }
 </script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

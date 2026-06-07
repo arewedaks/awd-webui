@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 function getSystemData($command, $default = 'N/A') {
     $output = @shell_exec($command);
     return trim($output) !== '' ? trim($output) : $default;
@@ -71,24 +72,8 @@ function getWidth($val, $type) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Signal Monitor</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-        :root {
-            --primary: #B87333; --accent: rgba(184, 115, 51, 0.15); --border: rgba(255, 255, 255, 0.4);
-            --blur-val: blur(5px); --card-bg: rgba(255, 248, 240, 0.15);
-            --text-main: #3E2A1C; --text-sub: #7A5C43; --shadow: 0 10px 30px rgba(62, 42, 28, 0.1);
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --card-bg: rgba(10, 5, 2, 0.2); --text-main: #FDF5E6; --text-sub: #C0B2A2;
-                --border: rgba(255, 255, 255, 0.12); --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            }
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            background: transparent !important; color: var(--text-main);
-            padding: 20px; -webkit-font-smoothing: antialiased;
-        }
         .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(122, 92, 67, 0.2); padding-bottom: 15px; margin-bottom: 25px; }
         h1 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
         .upd { font-size: 0.75rem; color: var(--text-sub); font-family: 'SF Mono', monospace; font-weight: 700; background: var(--accent); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
@@ -174,5 +159,6 @@ function getWidth($val, $type) {
         <?php endforeach; ?>
     <?php endif; ?>
     <script>setInterval(() => location.reload(), 3000);</script>
+<script src="/assets/js/main.js"></script>
 </body>
 </html>

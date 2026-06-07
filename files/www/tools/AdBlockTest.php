@@ -1,4 +1,5 @@
 <?php
+require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 // redirect_alt.php
 // Alternatif redirect menggunakan HTML meta refresh
 
@@ -13,5 +14,6 @@ $target_url = "https://adblock.turtlecute.org/";
 <body>
     <p>Jika tidak otomatis redirect, <a href="<?php echo $target_url; ?>">klik di sini</a>.</p>
 
+<script src="/assets/js/main.js"></script>
 </body>
 </html>
