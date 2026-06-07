@@ -69,14 +69,6 @@ enable_hotspot() {
     fi
 }
 
-# --- 3. INISIALISASI ---
-
-# Tambah IP Loopback untuk Web Server
-if ! ip addr show lo | grep -q "192.168.8.1"; then
-    ip addr add 192.168.8.1/24 dev lo
-    log_msg "[INIT] IP Loopback ditambahkan."
-fi
-
 # Cek Awal Hotspot saat boot
 if ! is_hotspot_on; then
     enable_hotspot
