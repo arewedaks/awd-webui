@@ -69,6 +69,8 @@ enable_hotspot() {
     fi
 }
 
+# --- 3. INISIALISASI ---
+
 # Cek Awal Hotspot saat boot
 if ! is_hotspot_on; then
     enable_hotspot

@@ -27,23 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    if (isset($_POST['action']) && $_POST['action'] === 'save_ip') {
-        header('Content-Type: application/json');
-        $newIp = $_POST['ip_address'] ?? '';
-        if (preg_match('/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$/', $newIp)) {
-            $checkFile = shell_exec("su -c \"ls '$autoHotspotScript' 2>/dev/null\"");
-            if (!empty(trim($checkFile))) {
-                shell_exec("su -c \"sed -i 's|ip addr add .* dev lo|ip addr add $newIp dev lo|g' '$autoHotspotScript' && chmod 755 '$autoHotspotScript'\"");
-                echo json_encode(['status' => 'success', 'message' => 'IP Updated']);
-            } else {
-                echo json_encode(['status' => 'warning', 'message' => 'Script Not Found']);
-            }
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid Format (ex: 192.168.8.1/24)']);
-        }
-        exit;
-    }
-
     if (isset($_POST['save_awd_ip'])) {
         $wifi_ip = $_POST['wifi_ip'] ?? '';
         $usb_ip = $_POST['usb_ip'] ?? '';
@@ -91,51 +74,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $cfgContent = file_exists($cfgFile) ? file_get_contents($cfgFile) : '';
 $is_enabled = (preg_match('/auto_hotspot=1/', $cfgContent) === 1);
 
-$currentIp = '192.168.8.1/24';
-$checkScript = shell_exec("su -c \"ls '$autoHotspotScript' 2>/dev/null\"");
-if (!empty(trim($checkScript))) {
-    $scriptContent = shell_exec("su -c \"cat '$autoHotspotScript'\"");
-    if (preg_match('/ip addr add (.*) dev lo/', $scriptContent, $matches)) {
-        $currentIp = trim($matches[1]);
-    }
-}
-
 function getCurrentConfig() {
     $propSsid = trim(shell_exec("su -c \"getprop persist.awdap.ssid\""));
     $propPass = trim(shell_exec("su -c \"getprop persist.awdap.pass\""));
 
     $paths = [
         '/data/misc/apexdata/com.android.wifi/WifiConfigStoreSoftAp.xml',
-        '/data/misc/wifi/WifiConfigStore.xml'
+        '/data/misc/wifi/WifiConfigStoreSoftAp.xml',
+        '/data/misc/wifi/WifiConfigStore.xml',
+        '/data/misc/wifi/softap.conf'
     ];
     $content = "";
     foreach ($paths as $p) {
         $check = shell_exec("su -c \"ls $p 2>/dev/null\"");
-        if (!empty(trim($check))) { $content = shell_exec("su -c \"cat $p\""); break; }
+        if (!empty(trim($check))) { 
+            $content = shell_exec("su -c \"cat $p\""); 
+            break; 
+        }
     }
     
+    $ssid = '';
+    $pass = '';
+
+    // Prioritaskan parameter dari module LSPosed (AWD)
     if (!empty($propSsid)) {
         $ssid = $propSsid;
     } else {
-        preg_match('/<string name="SSID">(.*?)<\/string>/', $content, $s);
-        $ssid = $s[1] ?? '';
-        if (empty($ssid)) {
-            preg_match('/<string name="WifiSsid">&quot;(.*?)&quot;<\/string>/', $content, $s_alt);
-            $ssid = $s_alt[1] ?? '';
+        // Parsing XML (A11+) atau conf (A10-)
+        if (preg_match('/^ssid=(.*)$/m', $content, $m)) {
+            $ssid = trim($m[1]);
+        } elseif (preg_match('/<string name="SSID">(.*?)<\/string>/', $content, $s) || preg_match('/<string name="WifiSsid">&quot;(.*?)&quot;<\/string>/', $content, $s)) {
+            $ssid = str_replace('&quot;', '', $s[1] ?? '');
         }
-        $ssid = str_replace('&quot;', '', $ssid);
     }
 
     if (!empty($propPass)) {
         $pass = $propPass;
     } else {
-        preg_match('/<string name="Passphrase">(.*?)<\/string>/', $content, $p);
-        $pass = $p[1] ?? '';
-        if (empty($pass)) {
-            preg_match('/<string name="PreSharedKey">&quot;(.*?)&quot;<\/string>/', $content, $p_alt);
-            $pass = $p_alt[1] ?? '';
+        // Parsing XML (A11+) atau conf (A10-)
+        if (preg_match('/^wpa_passphrase=(.*)$/m', $content, $m)) {
+            $pass = trim($m[1]);
+        } elseif (preg_match('/<string name="Passphrase">(.*?)<\/string>/', $content, $p) || preg_match('/<string name="PreSharedKey">&quot;(.*?)&quot;<\/string>/', $content, $p)) {
+            $pass = str_replace('&quot;', '', $p[1] ?? '');
         }
-        $pass = str_replace('&quot;', '', $pass);
     }
     
     return ['ssid' => $ssid, 'pass' => $pass];
