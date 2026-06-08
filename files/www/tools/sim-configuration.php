@@ -136,7 +136,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             background: transparent !important; color: var(--text-main);
-            padding: 20px; max-width: 600px; margin: 0 auto; padding-bottom: 100px; -webkit-font-smoothing: antialiased;
+            padding: 20px; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; -webkit-font-smoothing: antialiased; width: 100%;
         }
         h3 { font-weight: 800; margin-bottom: 15px; font-size: 1.1rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
         .card { 

@@ -156,7 +156,7 @@ $log = get_log($log_file);
             }
         }
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; background: transparent !important; color: var(--text-main); padding: 20px; max-width: 600px; margin: 0 auto; -webkit-font-smoothing: antialiased; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; background: transparent !important; color: var(--text-main); padding: 20px; max-width: 1200px; width: 100%; margin: 0 auto; -webkit-font-smoothing: antialiased; }
         header { text-align: center; margin-bottom: 25px; border-bottom: 1px dashed rgba(122, 92, 67, 0.2); padding-bottom: 20px; }
         h1 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .sub { font-size: 0.75rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }

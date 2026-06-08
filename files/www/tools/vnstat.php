@@ -15,7 +15,8 @@ function parseTrafficToMB($string) {
 
 function getInterfaces($binPath) {
     $output = shell_exec($binPath . "ifconfig -a");
-    preg_match_all('/(wlan|rmnet_data|ccmni|tun|eth|rndis)\d+/', $output, $matches);
+    // Filter hanya interface internet utama (WAN) untuk mencegah perhitungan ganda dari Hotspot/Tethering (LAN)
+    preg_match_all('/(rmnet[a-z_]*|ccmni|tun|eth)\d+|wlan0/', $output, $matches);
     return array_unique($matches[0]);
 }
 
@@ -82,6 +83,34 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
             'tm' => $monthlyStats[date('Y-m')]['t'] ?? 0
         ]
     ]);
+    exit;
+}
+
+if (isset($_GET['api']) && $_GET['api'] === 'get_live') {
+    header('Content-Type: application/json');
+    // Cari interface default yang mengarah ke internet (WAN)
+    $wan = trim(shell_exec("ip route show 2>/dev/null | grep default | awk '{print $5}' | head -n 1"));
+    
+    $data = @file_get_contents('/proc/net/dev');
+    $rx = 0; $tx = 0;
+    if ($data) {
+        foreach (explode("\n", $data) as $line) {
+            if (strpos($line, ':') !== false) {
+                list($iface, $stats) = explode(':', $line, 2);
+                $iface = trim($iface);
+                
+                // Jika WAN terdeteksi, HANYA hitung kecepatan dari WAN tersebut.
+                // Jika tidak terdeteksi, kecualikan interface loopback dan tethering.
+                if ($wan && $iface !== $wan) continue;
+                if (!$wan && ($iface == 'lo' || strpos($iface, 'dummy') !== false || strpos($iface, 'ap') !== false || strpos($iface, 'rndis') !== false)) continue;
+                
+                $stats = preg_split('/\s+/', trim($stats));
+                $rx += (float)$stats[0];
+                $tx += (float)$stats[8];
+            }
+        }
+    }
+    echo json_encode(['rx' => $rx, 'tx' => $tx, 'time' => microtime(true)]);
     exit;
 }
 
@@ -158,7 +187,6 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
         .dl { color: var(--primary); font-weight: 700; }
         .ul { color: #32d74b; font-weight: 700; }
 
-        /* --- PERBAIKAN TATA LETAK TOMBOL --- */
         .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .tgl { 
             grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; 
@@ -179,11 +207,12 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
             display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
         }
         .btn-s { background: var(--primary); }
-        .btn-r { background: var(--btn-reset); } /* Espresso Color */
+        .btn-r { background: var(--btn-reset); }
         .btn:active { transform: scale(0.96); }
 
         .sk { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: ld 1.5s infinite; color: transparent !important; border-radius: 4px; display: inline-block; }
         @keyframes ld { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
@@ -191,6 +220,23 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
         <div class="header">
             <h1>Network Monitor</h1>
             <div class="sub-t">Traffic Analytics</div>
+        </div>
+
+        <div class="c-box" style="text-align: center; padding: 25px 15px;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-sub); margin-bottom: 20px; font-weight: 800; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <span class="sk" style="width:8px; height:8px; border-radius:50%; background:var(--primary); animation: blink 1s infinite;"></span> Live Traffic
+            </div>
+            <div style="display: flex; justify-content: center; gap: 20px;">
+                <div style="flex:1">
+                    <div style="font-size: 1.8rem; font-weight: 900; color: var(--primary);" id="live_dl">0.00 <span style="font-size: 0.9rem;">KB/s</span></div>
+                    <div style="font-size: 0.7rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; margin-top:5px;">Download</div>
+                </div>
+                <div style="width: 1px; background: rgba(122, 92, 67, 0.2);"></div>
+                <div style="flex:1">
+                    <div style="font-size: 1.8rem; font-weight: 900; color: #32d74b;" id="live_ul">0.00 <span style="font-size: 0.9rem;">KB/s</span></div>
+                    <div style="font-size: 0.7rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; margin-top:5px;">Upload</div>
+                </div>
+            </div>
         </div>
 
         <div class="g-stat">
@@ -203,7 +249,7 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
             <div class="tabs">
                 <button class="tab act" onclick="changeChart('c', this)">Daily</button>
                 <button class="tab" onclick="changeChart('h', this)">Hourly</button>
-                <button class="tab" onclick="changeChart('5', this)">Realtime</button>
+                <button class="tab" onclick="changeChart('5', this)">5-Mins</button>
             </div>
             <div class="cvs"><canvas id="trafficChart"></canvas></div>
         </div>
@@ -239,7 +285,6 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
                     </label>
                 </form>
             </div>
-            <!-- Tombol sekarang sejajar rapi -->
             <form method="post" onsubmit="return confirm('Reset stats database?')" style="width:100%">
                 <input type="hidden" name="rst" value="1">
                 <button class="btn btn-r">Reset Stats</button>
@@ -278,6 +323,29 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
                 drawChart('c');
             });
         }
+        
+        let lastRx = 0, lastTx = 0, lastTime = 0;
+        function formatSpeed(bytes) {
+            if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' <span style="font-size: 0.9rem;">MB/s</span>';
+            if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' <span style="font-size: 0.9rem;">KB/s</span>';
+            return bytes.toFixed(2) + ' <span style="font-size: 0.9rem;">B/s</span>';
+        }
+        function updateLive() {
+            fetch('?api=get_live').then(r => r.json()).then(data => {
+                if (lastTime !== 0 && data.time > lastTime) {
+                    let dt = data.time - lastTime;
+                    let rxSpeed = (data.rx - lastRx) / dt;
+                    let txSpeed = (data.tx - lastTx) / dt;
+                    if (rxSpeed < 0) rxSpeed = 0;
+                    if (txSpeed < 0) txSpeed = 0;
+                    document.getElementById('live_dl').innerHTML = formatSpeed(rxSpeed);
+                    document.getElementById('live_ul').innerHTML = formatSpeed(txSpeed);
+                }
+                lastRx = data.rx; lastTx = data.tx; lastTime = data.time;
+                setTimeout(updateLive, 1000);
+            }).catch(e => setTimeout(updateLive, 2000));
+        }
+
         function drawChart(t) {
             if (myChart) myChart.destroy();
             const d = chartData[t];
@@ -298,18 +366,18 @@ $isAutoStartEnabled = (strpos($configContent, 'vnstat=1') !== false);
                     plugins: { legend: { labels: { color: txtColor, font: { weight: 'bold' } } } },
                     scales: {
                         x: { grid: { display: false }, ticks: { color: txtColor } },
-                        y: { beginAtZero: true, grid: { color: 'rgba(122,92,67,0.1)' }, ticks: { color: txtColor } }
+                        y: { grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }, ticks: { color: txtColor } }
                     }
                 }
             });
         }
-        function changeChart(t, el) {
+        function changeChart(t, btn) {
             document.querySelectorAll('.tab').forEach(b => b.classList.remove('act'));
-            el.classList.add('act');
+            btn.classList.add('act');
             drawChart(t);
         }
         initData();
+        updateLive();
     </script>
-<script src="/assets/js/main.js"></script>
 </body>
 </html>

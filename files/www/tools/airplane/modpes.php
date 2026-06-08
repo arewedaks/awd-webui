@@ -52,11 +52,13 @@ $bt_on = exec_root("settings get global bluetooth_on");
     <style>
         /* Replaced by style.css */
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; background: transparent !important; color: var(--text-main); padding: 20px; max-width: 500px; margin: 0 auto; -webkit-font-smoothing: antialiased; }
-        .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        h1 { font-size: 1.2rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
-        .sub { font-size: 0.75rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-        .badge { padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; border: 1px solid var(--border); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; background: transparent !important; color: var(--text-main); padding: 20px; max-width: 1200px; width: 100%; margin: 0 auto; -webkit-font-smoothing: antialiased; }
+        header { text-align: center; margin-bottom: 25px; border-bottom: 1px dashed rgba(122, 92, 67, 0.2); padding-bottom: 20px; }
+        h1 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .sub { font-size: 0.75rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .ti { font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-main); }
+        .badge { padding: 6px 14px; border-radius: 20px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--border); }
         .on { background: rgba(255, 59, 48, 0.15); color: #ff3b30; }
         .off { background: rgba(52, 199, 89, 0.15); color: #32d74b; }
         .card { 
@@ -84,13 +86,21 @@ $bt_on = exec_root("settings get global bluetooth_on");
     </style>
 </head>
 <body>
-    <div class="head">
-        <div><h1>Airplane</h1><div class="sub"><?= $device_model ?></div></div>
-        <div class="badge <?= ($airplane_status == 1) ? 'on' : 'off' ?>"><?= ($airplane_status == 1) ? 'ACTIVE' : 'INACTIVE' ?></div>
-    </div>
+    <header>
+        <h1>
+            <svg class="icon" style="width:22px; height:22px; fill:currentColor;" viewBox="0 0 24 24"><path d="M22 16v-2l-8.5-5V3.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5V9L2 14v2l8.5-2.5V19L8 20.5V22l4-1 4 1v-1.5L13.5 19v-5.5L22 16z"/></svg> 
+            Airplane Mode
+        </h1>
+        <p class="sub"><?= $device_model ?></p>
+    </header>
+
     <?php if($message): ?><div class="alert"><?= $message ?></div><?php endif; ?>
+    
     <div class="card">
-        <div class="c-title">Flight Control</div>
+        <div class="head">
+            <div class="ti">Flight Control</div>
+            <div class="badge <?= ($airplane_status == 1) ? 'on' : 'off' ?>"><?= ($airplane_status == 1) ? 'ACTIVE' : 'INACTIVE' ?></div>
+        </div>
         <form method="POST">
             <input type="hidden" name="action" value="toggle_airplane">
             <div class="grid">

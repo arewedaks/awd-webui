@@ -35,9 +35,15 @@ fi
 WRAPPER_SCRIPT="${TERMUX_USR}/tmp/awd_webui_wrapper.sh"
 
 if [ ! -f "$WRAPPER_SCRIPT" ]; then
-    echo "Error: Wrapper script tidak ditemukan. Harap jalankan install_ttyd_wrapper.sh!"
-    # Fallback darurat
-    exec su -m -g $user_uid -G 3003 -G 3004 -G 9997 -G 1015 $user_uid -s $BASH_BIN -- -l
+    if [ -f "${scripts_dir}/awd_webui_wrapper.sh" ]; then
+        cp -f "${scripts_dir}/awd_webui_wrapper.sh" "$WRAPPER_SCRIPT"
+        chmod 0755 "$WRAPPER_SCRIPT"
+        chown $user_uid:$user_uid "$WRAPPER_SCRIPT"
+    else
+        echo "Error: Wrapper script tidak ditemukan di ${scripts_dir}!"
+        # Fallback darurat
+        exec su -m -g $user_uid -G 3003 -G 3004 -G 9997 -G 1015 $user_uid -s $BASH_BIN -- -l
+    fi
 fi
 
 # Eksekusi wrapper menggunakan su. PTY otomatis diwariskan dari ttyd!
