@@ -15,6 +15,7 @@ if ($simInfoRaw) {
         $subId = null; $simId = null; $name = 'Unknown'; $mcc = ''; $mnc = '';
         if (preg_match('/_id=(\d+)/', $line, $m)) $subId = $m[1];
         if (preg_match('/sim_id=(\d+)/', $line, $m)) $simId = intval($m[1]);
+
         if (preg_match('/display_name=([^,]+)/', $line, $m)) $name = trim($m[1]);
         if (preg_match('/mcc_string=(\d+)/', $line, $m)) $mcc = $m[1];
         if (preg_match('/mnc_string=(\d+)/', $line, $m)) $mnc = $m[1];
@@ -35,6 +36,12 @@ $uri_prefer = $target_subId ? "content://telephony/carriers/preferapn/subId/$tar
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $actionTaken = false;
+    if (isset($_POST['switch_data_subid']) && !empty($_POST['switch_data_subid'])) {
+        $subId = intval($_POST['switch_data_subid']);
+        // Use our SoftApHelper BroadcastReceiver to switch default data & toggle connection (Zero Overhead)
+        executeCommand("su -c \"am broadcast -a com.awd.modemtools.SET_DATA_SIM --ei subId $subId\"");
+        $actionTaken = true;
+    }
     if (isset($_POST['set_apn']) && isset($_POST['apn_id'])) {
         $id = escapeshellarg($_POST['apn_id']);
         executeCommand("su -c \"content update --uri $uri_prefer --bind apn_id:i:$id\"");
@@ -211,11 +218,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
         <h3>Network SIM</h3>
         <form method="POST" id="simForm">
             <input type="hidden" name="ui_sim_id" value="<?= $ui_sim_tab ?>">
+            <input type="hidden" name="switch_data_subid" id="switch_data_subid" value="">
             <div class="sim-grid">
                 <?php foreach([1,2] as $n): 
                     $idx = $n-1; $isActive = ($ui_sim_tab == $n); $hasSim = isset($simMap[$idx]); 
                 ?>
-                <div class="sim-box <?= $isActive ? 'active' : '' ?> <?= !$hasSim ? 'disabled' : '' ?>" onclick="<?= $hasSim ? "selectSim($n)" : '' ?>">
+                <div class="sim-box <?= $isActive ? 'active' : '' ?> <?= !$hasSim ? 'disabled' : '' ?>" onclick="<?= $hasSim ? "selectSim($n, " . ($simMap[$idx]['subId'] ?? 'null') . ")" : '' ?>">
                     <iconify-icon icon="ic:round-sim-card" class="sim-icon"></iconify-icon>
                     <div class="sim-info">
                         <div class="sim-name"><?= $hasSim ? htmlspecialchars($simMap[$idx]['name']) : 'Slot '.$n ?></div>
@@ -304,7 +312,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
 <div class="loader" id="ldr"><div class="spinner"></div></div>
 <script>
 function showL() { document.getElementById('ldr').style.display='flex'; }
-function selectSim(n) { showL(); const f = document.getElementById('simForm'); f.querySelector('input[name="ui_sim_id"]').value = n; f.submit(); }
+function selectSim(n, subId) { 
+    showL(); 
+    const f = document.getElementById('simForm'); 
+    f.querySelector('input[name="ui_sim_id"]').value = n; 
+    if (subId !== null) f.querySelector('#switch_data_subid').value = subId;
+    f.submit(); 
+}
 function addApn() { window.location.href = "?action=add&ui_sim_id=" + <?= $ui_sim_tab ?>; }
 function editApn(id) { window.location.href = "?action=edit&id=" + id + "&ui_sim_id=" + <?= $ui_sim_tab ?>; }
 </script>

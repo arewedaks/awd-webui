@@ -270,6 +270,26 @@ if [ -d "${MAGISK_MOD_DIR}" ]; then
 fi
 
 #============================================#
+# Enable LSPosed Module Automatically
+#============================================#
+echo ""
+echo "Mengaktifkan modul AWD Modem di LSPosed..."
+
+if [ -f "/data/adb/lspd/config/modules_config.db" ] && [ -f "${PHP_DATA_DIR}/files/bin/php" ]; then
+    ${PHP_DATA_DIR}/files/bin/php -r "
+        try {
+            \$db = new SQLite3('/data/adb/lspd/config/modules_config.db');
+            \$db->exec(\"INSERT INTO modules_state (module_pkg_name, user_id, enabled, scope_request_blocked) VALUES ('com.awd.modemtools', 0, 1, 0) ON CONFLICT(module_pkg_name, user_id) DO UPDATE SET enabled=1\");
+            echo \"  -> Modul AWD Modem berhasil diaktifkan di database LSPosed [OK]\n\";
+        } catch (Exception \$e) {
+            echo \"  -> Gagal mengaktifkan modul: \" . \$e->getMessage() . \" [FAIL]\n\";
+        }
+    "
+else
+    echo "  -> LSPosed tidak ditemukan atau PHP belum terinstal [SKIP]"
+fi
+
+#============================================#
 # Selesai
 #============================================#
 echo ""

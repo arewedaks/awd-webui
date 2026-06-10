@@ -12,7 +12,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_all') {
 
     // Mengambil data utama
     $lines = explode("\n", getCmd("cat /proc/uptime; getprop ro.product.model; getprop ro.build.version.release; getprop gsm.sim.operator.alpha; getprop ro.soc.model"));
-    $up = floatval(explode(' ', $lines[0]??'0')[0]);
+    $up = (int)floatval(explode(' ', $lines[0]??'0')[0]);
     $days = floor($up/86400); $hours = floor(($up%86400)/3600); $mins = floor(($up%3600)/60);
     
     $hw = trim($lines[4]??'');
@@ -57,7 +57,6 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_all') {
     $data['network'] = $netList;
 
     $signals = [];
-    $dump = getCmd('dumpsys telephony.registry');
     
     $rawNames = $lines[3] ?? '';
     $simNames = [];
@@ -65,48 +64,98 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_all') {
         $simNames = explode(',', $rawNames);
     }
 
-    if(!empty($dump) && preg_match_all('/CellSignalStrength(Lte|Nr|Gsm|Wcdma|Tdscdma):(.+?)(?=CellSignalStrength|$)/s', $dump, $matches, PREG_SET_ORDER)) {
+    $fastJsonFile = '/data/adb/php8/files/tmp/awd_signal.json';
+    if (!file_exists($fastJsonFile)) {
+        $fastJsonFile = '/data/system/awd_signal.json';
+    }
+
+    $sim_blocks = [1 => []];
+    $hasRealtime = false;
+    
+    if (file_exists($fastJsonFile)) {
+        $fastJson = json_decode(file_get_contents($fastJsonFile), true);
+        if (is_array($fastJson) && !empty($fastJson)) {
+            foreach ($fastJson as $phoneId => $strData) {
+                // strData berbentuk "SignalStrength:{...}"
+                if (preg_match('/SignalStrength:\{(.+)\}$/s', trim($strData), $m)) {
+                    $sim_blocks[1][] = $m[1];
+                }
+            }
+            if (!empty($sim_blocks[1])) {
+                $hasRealtime = true;
+            }
+        }
+    }
+
+    // 2. Jika tidak ada file Real-Time, Fallback ke dumpsys lambat
+    if (!$hasRealtime) {
+        $dump = getCmd('dumpsys telephony.registry');
+        if (!empty($dump)) {
+            preg_match_all('/mSignalStrength=SignalStrength:\{(.+)\}$/m', $dump, $sim_blocks);
+        }
+    }
+    
+    if (!empty($sim_blocks[1])) {
         $count = 0; 
-        foreach($matches as $m) {
+        foreach($sim_blocks[1] as $block) {
             if ($count >= 2) break;
-
-            $type = strtoupper($m[1]);
-            $ld = $m[2];
             
-            preg_match('/rssi=([-\d]+)/',$ld,$rssi); 
-            preg_match('/rsrp=([-\d]+)/',$ld,$rsrp);
-            preg_match('/rsrq=([-\d]+)/',$ld,$rsrq); 
-            preg_match('/rssnr=([-\d]+)/',$ld,$sinr);
-            preg_match('/level=(\d)/',$ld,$lvl);
-
-            $i_lvl = (int)($lvl[1]??0);
-            if ($i_lvl === 0 && !isset($rsrp[1])) continue;
-
-            $v_rsrp = (isset($rsrp[1]) && abs($rsrp[1]) < 200) ? $rsrp[1] : 'N/A';
-            $v_rssi = (isset($rssi[1]) && abs($rssi[1]) < 200) ? $rssi[1] : 'N/A';
-
-            $pName = 'SIM '.($count+1);
-            if (isset($simNames[$count]) && trim($simNames[$count]) !== '') {
-                $pName = trim($simNames[$count]);
+            // Cari signal mana yang sedang primary/aktif (contoh: primary=CellSignalStrengthLte)
+            if (preg_match('/primary=(CellSignalStrength[A-Za-z]+)/', $block, $prim_match)) {
+                $primary_type = $prim_match[1];
+            } else {
+                // Fallback jika tidak ada tulisan primary (ROM jadul)
+                preg_match('/(CellSignalStrength[A-Za-z]+):/', $block, $prim_match);
+                $primary_type = $prim_match[1] ?? 'CellSignalStrengthLte';
             }
 
-            $signals[] = [
-                'provider' => $pName,
-                'type' => $type, 
-                'level' => $i_lvl,
-                'rsrp' => $v_rsrp, 
-                'rssi' => $v_rssi,
-                'sinr' => $sinr[1]??'N/A', 
-                'rsrq' => $rsrq[1]??'N/A'
-            ];
+            // Ambil nama tipe jaringan (LTE, GSM, WCDMA, dll)
+            $type = strtoupper(str_replace('CellSignalStrength', '', $primary_type));
+            
+            // Ekstrak blok parameter untuk tipe yang aktif saja
+            if (preg_match('/' . $primary_type . ':\s*(.+?)(?=(,[a-zA-Z0-9]+=CellSignalStrength|}$|,primary=))/s', $block, $ld_match)) {
+                $ld = $ld_match[1];
+                
+                preg_match('/rssi=([-\d]+)/',$ld,$rssi); 
+                preg_match('/rsrp=([-\d]+)/',$ld,$rsrp);
+                preg_match('/rsrq=([-\d]+)/',$ld,$rsrq); 
+                preg_match('/rssnr=([-\d]+)/',$ld,$sinr);
+                preg_match('/(?:mLevel|level)=(\d)/i',$ld,$lvl);
+
+                $i_lvl = (int)($lvl[1]??0);
+                
+                // Jika nilai tidak masuk akal (2147483647), berarti SIM tidak terdeteksi/kosong
+                $is_empty = ($i_lvl === 0 && (!isset($rsrp[1]) || $rsrp[1] == '2147483647') && (!isset($rssi[1]) || $rssi[1] == '2147483647'));
+                if ($is_empty) {
+                    $count++;
+                    continue; // Skip agar tidak muncul SIM Hantu
+                }
+
+                $v_rsrp = (isset($rsrp[1]) && abs($rsrp[1]) < 200) ? $rsrp[1] : 'N/A';
+                $v_rssi = (isset($rssi[1]) && abs($rssi[1]) < 200) ? $rssi[1] : 'N/A';
+                $v_sinr = (isset($sinr[1]) && abs($sinr[1]) < 200) ? $sinr[1] : 'N/A';
+                $v_rsrq = (isset($rsrq[1]) && abs($rsrq[1]) < 200) ? $rsrq[1] : 'N/A';
+
+                $pName = 'SIM '.($count+1);
+                if (isset($simNames[$count]) && trim($simNames[$count]) !== '') {
+                    $pName = trim($simNames[$count]);
+                }
+
+                $signals[] = [
+                    'provider' => $pName,
+                    'type' => $type, 
+                    'level' => $i_lvl,
+                    'rsrp' => $v_rsrp, 
+                    'rssi' => $v_rssi,
+                    'sinr' => $v_sinr, 
+                    'rsrq' => $v_rsrq
+                ];
+            }
             $count++; 
         }
     }
 
-    if (empty($signals)) {
-        $pName = isset($simNames[0]) ? $simNames[0] : 'No SIM';
-        $signals[] = ['provider'=>$pName, 'type'=>'NO SIGNAL', 'level'=>0, 'rsrp'=>'N/A', 'rssi'=>'N/A', 'sinr'=>'N/A', 'rsrq'=>'N/A'];
-    }
+    // Blok fallback empty signals telah dihapus sesuai permintaan agar UI bersih saat Airplane mode
     
     $data['signal'] = $signals; 
 
@@ -346,7 +395,7 @@ function updateAll() {
         return 'var(--primary)';
     };
 
-    fetch('exec/helpers.php').then(r=>r.json()).then(d=>{
+    fetch('exec/helpers.php?_t=' + Date.now(), {cache: "no-store"}).then(r=>r.json()).then(d=>{
         const m = d.used_memory_percent||0;
         document.getElementById('ramBadge').innerText = m+'%';
         document.getElementById('memBar').style.width = m+'%';
@@ -363,14 +412,14 @@ function updateAll() {
         });
     }).catch(()=>{});
 
-    fetch('?api=get_all').then(r=>r.json()).then(d=>{
+    fetch('?api=get_all&_t=' + Date.now(), {cache: "no-store"}).then(r=>r.json()).then(d=>{
         document.getElementById('uptime').innerText = d.system.uptime;
         document.getElementById('model').innerText = d.system.model;
         document.getElementById('soc').innerText = d.system.soc;
         
         document.getElementById('battLevel').innerText = d.battery.level + '%';
         document.getElementById('battStatus').innerText = d.battery.status;
-        document.getElementById('battVolt').innerText = `${d.battery.voltage} / ${d.battery.temp}°C`;
+        document.getElementById('battVolt').innerHTML = `${d.battery.voltage} / ${parseInt(d.battery.temp)}&deg;C`;
 
         let sHtml = '';
         d.storage.forEach(p => {
@@ -398,11 +447,14 @@ function updateAll() {
         }
         document.getElementById('netTable').innerHTML = nHtml;
 
-        const signals = Array.isArray(d.signal) ? d.signal : [d.signal];
-        document.getElementById('simCount').innerText = signals.length > 1 ? 'Dual SIM' : 'Single SIM';
+        const signals = Array.isArray(d.signal) ? d.signal : (d.signal ? [d.signal] : []);
+        document.getElementById('simCount').innerText = signals.length > 1 ? 'Dual SIM' : (signals.length === 0 ? 'Offline' : 'Single SIM');
         
         let sigHtml = '';
-        signals.forEach((sig, index) => {
+        if (signals.length === 0) {
+            sigHtml = `<div style="text-align:center; color:var(--danger); padding:15px; font-weight:bold;">Airplane Mode / No Signal</div>`;
+        } else {
+            signals.forEach((sig, index) => {
             let vizHtml = `<div class="sig-viz">`;
             for(let i=0; i<4; i++) {
                 let activeClass = (sig.type !== 'NO SIGNAL' && i < sig.level) ? 'active' : '';
@@ -417,25 +469,32 @@ function updateAll() {
                 ${vizHtml}
             </div>`;
             
-            if(sig.type !== 'NO SIGNAL' && sig.rsrp !== 'N/A') {
+            if(sig.type !== 'NO SIGNAL' && (sig.rsrp !== 'N/A' || sig.rssi !== 'N/A' || sig.sinr !== 'N/A' || sig.rsrq !== 'N/A')) {
                 const rsrp = parseInt(sig.rsrp), sinr = parseInt(sig.sinr), rsrq = parseInt(sig.rsrq), rssi = parseInt(sig.rssi);
                 
-                const wRSRP = getW(rsrp, -140, 100); 
-                const wSINR = getW(sinr, -20, 50);   
-                const wRSRQ = getW(rsrq, -20, 17);   
-                const wRSSI = getW(rssi, -113, 62);  
+                if (sig.rsrp !== 'N/A') {
+                    const wRSRP = getW(rsrp, -140, 100); 
+                    const cRSRP = getC(rsrp, 'rsrp');
+                    sigHtml += `<div class="prog-wrap"><div class="prog-info"><span class="lbl">RSRP</span><span class="val" style="color:${cRSRP}">${sig.rsrp} dBm</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wRSRP}; background:${cRSRP}"></div></div></div>`;
+                }
+                
+                if (sig.sinr !== 'N/A') {
+                    const wSINR = getW(sinr, -20, 50);   
+                    const cSINR = getC(sinr, 'sinr');
+                    sigHtml += `<div class="prog-wrap"><div class="prog-info"><span class="lbl">SINR</span><span class="val" style="color:${cSINR}">${sig.sinr} dB</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wSINR}; background:${cSINR}"></div></div></div>`;
+                }
 
-                const cRSRP = getC(rsrp, 'rsrp');
-                const cSINR = getC(sinr, 'sinr');
-                const cRSRQ = getC(rsrq, 'rsrq');
-                const cRSSI = getC(rssi, 'rssi');
+                if (sig.rsrq !== 'N/A') {
+                    const wRSRQ = getW(rsrq, -20, 17);   
+                    const cRSRQ = getC(rsrq, 'rsrq');
+                    sigHtml += `<div class="prog-wrap"><div class="prog-info"><span class="lbl">RSRQ</span><span class="val" style="color:${cRSRQ}">${sig.rsrq} dB</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wRSRQ}; background:${cRSRQ}"></div></div></div>`;
+                }
 
-                sigHtml += `
-                    <div class="prog-wrap"><div class="prog-info"><span class="lbl">RSRP</span><span class="val" style="color:${cRSRP}">${sig.rsrp} dBm</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wRSRP}; background:${cRSRP}"></div></div></div>
-                    <div class="prog-wrap"><div class="prog-info"><span class="lbl">SINR</span><span class="val" style="color:${cSINR}">${sig.sinr} dB</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wSINR}; background:${cSINR}"></div></div></div>
-                    <div class="prog-wrap"><div class="prog-info"><span class="lbl">RSRQ</span><span class="val" style="color:${cRSRQ}">${sig.rsrq} dB</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wRSRQ}; background:${cRSRQ}"></div></div></div>
-                    <div class="prog-wrap"><div class="prog-info"><span class="lbl">RSSI</span><span class="val" style="color:${cRSSI}">${sig.rssi} dBm</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wRSSI}; background:${cRSSI}"></div></div></div>
-                `;
+                if (sig.rssi !== 'N/A') {
+                    const wRSSI = getW(rssi, -113, 62);  
+                    const cRSSI = getC(rssi, 'rssi');
+                    sigHtml += `<div class="prog-wrap"><div class="prog-info"><span class="lbl">RSSI</span><span class="val" style="color:${cRSSI}">${sig.rssi} dBm</span></div><div class="prog-bg"><div class="prog-bar" style="width:${wRSSI}; background:${cRSSI}"></div></div></div>`;
+                }
             } else {
                 const gy = 'var(--text-sub)'; const bg = 'rgba(122, 92, 67, 0.2)';
                 sigHtml += `
@@ -445,6 +504,7 @@ function updateAll() {
             
             if(index < signals.length - 1) sigHtml += `<div style="margin-bottom:20px; border-bottom:1px dashed var(--border-dashed)"></div>`;
         });
+        }
         document.getElementById('sigDetails').innerHTML = sigHtml;
 
     }).catch(()=>{});
