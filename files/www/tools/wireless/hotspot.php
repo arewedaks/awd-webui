@@ -145,7 +145,7 @@ $deviceList = getConnectedDevicesDetail();
 $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
 
 $awd_wifi_ip = trim(shell_exec("su -c \"getprop persist.awdap.wifi_ip\""));
-if (empty($awd_wifi_ip)) $awd_wifi_ip = "192.168.43.1";
+if (empty($awd_wifi_ip)) $awd_wifi_ip = "192.168.8.1";
 $awd_usb_ip = trim(shell_exec("su -c \"getprop persist.awdap.usb_ip\""));
 if (empty($awd_usb_ip)) $awd_usb_ip = "192.168.42.1";
 $awd_bt_ip = trim(shell_exec("su -c \"getprop persist.awdap.bt_ip\""));
