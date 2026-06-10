@@ -21,11 +21,25 @@ log_msg() {
     fi
 }
 
-# Setup Flashlight Path
+# Setup Flashlight Path & Brightness
 FLASH_PATH=""
-for path in /sys/class/leds/flashlight /sys/class/leds/torch-light0 /sys/class/leds/led:torch_0; do
+FLASH_MAX="1"
+SWITCH_PATH=""
+
+# Cek apakah ada master switch untuk LED (biasanya di HP Snapdragon/Qualcomm)
+if [ -f "/sys/class/leds/led:switch/brightness" ]; then
+    SWITCH_PATH="/sys/class/leds/led:switch/brightness"
+fi
+
+# Tambahkan beberapa kemungkinan path senter dari berbagai jenis HP (Snapdragon/Mediatek/Exynos)
+for path in /sys/class/leds/flashlight /sys/class/leds/torch-light0 /sys/class/leds/led:torch_0 /sys/class/leds/led:switch_0 /sys/class/leds/white:flash /sys/devices/virtual/camera/flash/rear_flash; do
     if [ -f "$path/brightness" ]; then
         FLASH_PATH="$path/brightness"
+        if [ -f "$path/max_brightness" ]; then
+            FLASH_MAX=$(cat "$path/max_brightness")
+            # Jaga-jaga jika max_brightness terbaca 0 atau kosong, fallback ke 1 (boolean standard)
+            if [ -z "$FLASH_MAX" ] || [ "$FLASH_MAX" -eq 0 ]; then FLASH_MAX="1"; fi
+        fi
         break
     fi
 done
@@ -34,31 +48,51 @@ done
 
 blink_flash() {
     if [ ! -z "$FLASH_PATH" ]; then
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH; sleep 0.3
-        echo 1 > $FLASH_PATH; sleep 0.3
-        echo 0 > $FLASH_PATH
+        # Looping 5 kali kedipan
+        for i in 1 2 3 4 5; do
+            # Jika ada switch master, nyalakan dulu
+            if [ ! -z "$SWITCH_PATH" ]; then echo 1000 > "$SWITCH_PATH" 2>/dev/null; fi
+            echo $FLASH_MAX > "$FLASH_PATH"
+            sleep 0.3
+            
+            echo 0 > "$FLASH_PATH"
+            if [ ! -z "$SWITCH_PATH" ]; then echo 0 > "$SWITCH_PATH" 2>/dev/null; fi
+            sleep 0.3
+        done
     fi
 }
 
 # --- BAGIAN A: HOTSPOT WIFI ---
 is_hotspot_on() {
-    # Cek status AP via dumpsys (Lebih akurat)
-    if dumpsys wifi | grep -q "mWifiApState=13"; then
-        return 0
-    elif dumpsys wifi | grep -q "CurState=ApEnabledState"; then
-        return 0
-    else
-        # Fallback cek IP wlan
-        ip addr show wlan0 | grep -q "192.168."
-        return $?
+    # 1. Cek interface hotspot murni (ap0, swlan0, wlan1)
+    # Ini cara paling real-time dan akurat tanpa membaca history log.
+    for iface in ap0 swlan0 wlan1; do
+        if ip addr show $iface 2>/dev/null | grep -q "inet "; then
+            return 0
+        fi
+    done
+
+    # 2. Cek wlan0 (jika ROM menggunakan wlan0 sebagai hotspot)
+    if ip addr show wlan0 2>/dev/null | grep -q "inet "; then
+        # Hotspot bertindak sebagai router (gateway), sehingga wlan0 tidak akan memiliki default gateway.
+        # Jika terhubung ke WiFi biasa, wlan0 PASTI memiliki default gateway.
+        if ! ip route show table 0 2>/dev/null | grep -q "default via.*dev wlan0"; then
+            # Pastikan IP adalah kelas privat (umumnya hotspot menggunakan 192.168.x.x atau 10.x.x.x)
+            if ip addr show wlan0 | grep -qE "inet (192\.168\.|10\.|172\.)"; then
+                return 0
+            fi
+        fi
     fi
+
+    # 3. Cek Dumpsys dengan membatasi baris (menghindari history log lama terbaca)
+    if dumpsys wifi | head -n 30 | grep -qiE "mWifiApState=13|CurState=ApEnabledState|mApEnabled=true"; then
+        return 0
+    fi
+    if dumpsys tethering | head -n 30 | grep -qiE "TetherState.TETHERED.*(wlan|ap0|swlan)"; then
+        return 0
+    fi
+
+    return 1
 }
 
 enable_hotspot() {

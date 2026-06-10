@@ -32,9 +32,9 @@ function write_config($sp, $url, $to, $ip, $boot) {
     $u = escapeshellcmd($url);
     $i = escapeshellcmd($ip);
     $val = $boot ? '1' : '0';
-    exec_root("sed -i \"s|url=.*|url='$u'|g\" $sp");
-    exec_root("sed -i \"s|to=.*|to=$to|g\" $sp");
-    exec_root("sed -i \"s|ip=.*|ip='$i'|g\" $sp");
+    exec_root("sed -i \"s|^url=.*|url='$u'|g\" $sp");
+    exec_root("sed -i \"s|^to=.*|to=$to|g\" $sp");
+    exec_root("sed -i \"s|^ip=.*|ip='$i'|g\" $sp");
     exec_root("mkdir -p /data/adb/php8/files/config");
     $check = shell_exec("grep '^airplane=' $onboot_cfg 2>/dev/null");
 

@@ -20,12 +20,18 @@ LOGFILE=/sdcard/vnstat.log
 
     sleep 15
     
-    echo "$(date): Mencoba menjalankan vnstatd..." >> $LOGFILE
+    echo "$(date): Watchdog vnstatd dimulai..." >> $LOGFILE
     
-    if pgrep vnstatd > /dev/null; then
-        echo "$(date): vnstatd sudah berjalan" >> $LOGFILE
-    else
-        su -c "/data/data/com.termux/files/usr/bin/vnstatd -d"
-        echo "$(date): vnstatd dijalankan" >> $LOGFILE
-    fi
+    # Looping Utama (Watchdog) berjalan setiap 60 detik
+    while true; do
+        if ! pgrep vnstatd > /dev/null; then
+            echo "$(date): vnstatd mati atau belum jalan! Menjalankan ulang..." >> $LOGFILE
+            # Magisk 'su' menghapus environment, jadi kita harus pass ulang environmentnya langsung di dalam perintah
+            su -c "PREFIX=/data/data/com.termux/files/usr LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib PATH=/data/data/com.termux/files/usr/bin:/system/bin:\$PATH /data/data/com.termux/files/usr/bin/vnstatd -d"
+            echo "$(date): vnstatd berhasil dipanggil" >> $LOGFILE
+        fi
+        
+        # Delay 60 detik (tidak perlu terlalu cepat untuk menghemat baterai, karena daemon vnstat jarang crash)
+        sleep 60
+    done
 )&

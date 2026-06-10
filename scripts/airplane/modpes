@@ -43,7 +43,13 @@ log_message() {
 
 get_current_ip() {
     local cur_ip
-    cur_ip=''
+    # Ambil IP dari interface seluler utama (biasanya rmnet_data0 atau ccmni0)
+    cur_ip=$(ip addr show rmnet_data0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -n 1)
+    
+    # Jika gagal, ambil IP dari routing utama ke internet
+    if [ -z "$cur_ip" ]; then
+        cur_ip=$(ip route get 8.8.8.8 2>/dev/null | awk -F"src " '{print $2}' | awk '{print $1}')
+    fi
     echo "$cur_ip"
 }
 
@@ -52,7 +58,7 @@ check_ip_match() {
         return 0
     fi
     
-    local current_ip=''
+    local current_ip=$(get_current_ip)
     if [ -z "$current_ip" ]; then
         return 1
     fi
@@ -67,8 +73,8 @@ check_ip_match() {
     for entry in $ip; do
         if echo "$entry" | grep -q "-"; then
             # Format Range: 100.64-100.127
-            local start_ip=''
-            local end_ip=''
+            local start_ip=$(echo "$entry" | cut -d- -f1)
+            local end_ip=$(echo "$entry" | cut -d- -f2)
             
             # Ambil Octet ke-1 & ke-2 dari batas range
             local target_oct1=$(echo "$start_ip" | cut -d. -f1)

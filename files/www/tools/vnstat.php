@@ -14,10 +14,25 @@ function parseTrafficToMB($string) {
 }
 
 function getInterfaces($binPath) {
-    $output = shell_exec($binPath . "ifconfig -a");
-    // Filter hanya interface internet utama (WAN) untuk mencegah perhitungan ganda dari Hotspot/Tethering (LAN)
-    preg_match_all('/(rmnet[a-z_]*|ccmni|tun|eth)\d+|wlan0/', $output, $matches);
-    return array_unique($matches[0]);
+    // Ambil daftar interface langsung dari database vnstat, bukan ifconfig.
+    // Ini penting agar histori dari interface yang sedang mati (misal seluler mati) tetap terbaca.
+    $output = shell_exec($binPath . "vnstat --iflist 2>&1");
+    if (preg_match('/Available interfaces:\s*(.+)/', $output, $m)) {
+        $ifaces = explode(' ', trim($m[1]));
+        $valid = [];
+        foreach ($ifaces as $iface) {
+            $iface = trim($iface);
+            // KECUALIKAN interface VPN (tun/tap) dan LAN/Hotspot (ap/swlan/rndis) agar TIDAK double-counting
+            if (preg_match('/^(tun|tap|ap|swlan|rndis|lo|dummy)/', $iface)) continue;
+            
+            // HANYA MASUKKAN interface WAN (Seluler dan WiFi Client)
+            if (preg_match('/^(rmnet|ccmni|wlan|eth)/', $iface)) {
+                $valid[] = $iface;
+            }
+        }
+        return $valid;
+    }
+    return [];
 }
 
 if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
