@@ -22,6 +22,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Automatically remove loading state when jQuery AJAX requests complete
+    if (typeof window.jQuery !== 'undefined') {
+        window.jQuery(document).ajaxComplete(function() {
+            document.querySelectorAll('.is-loading').forEach(btn => {
+                btn.classList.remove('is-loading');
+                btn.style.pointerEvents = '';
+            });
+        });
+    }
+
     // 2. Auto-Loading on regular buttons that trigger page reloads/actions via href or onclick
     // We target common classes used for actions
     const actionButtons = document.querySelectorAll('.btn-p, .btn-d, .btn-kill, .btn-w, .btn-s, .btn-start, .refresh');

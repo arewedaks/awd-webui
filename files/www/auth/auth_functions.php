@@ -2,6 +2,8 @@
 // PERBAIKAN 1: Cek dulu status session
 // Ini mencegah error "Notice: Ignoring session_start()" jika session sudah aktif
 if (session_status() == PHP_SESSION_NONE) {
+    // Set session path to valid Android directory to prevent /tmp errors
+    session_save_path('/data/adb/php8/files/tmp');
     session_start();
 }
 

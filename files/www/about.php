@@ -1,19 +1,9 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
-function parseFile($f) {
+function getDescText($f) {
     $p = __DIR__ . '/codes/' . $f;
-    if(!file_exists($p)) return "<div class='desc'>File codes/$f not found.</div>";
-    $lines = file($p, FILE_IGNORE_NEW_LINES);
-    $out = ''; $buf = []; 
-    foreach($lines as $l) {
-        if(strpos(trim($l), '/') === 0) {
-            if(!empty($buf)) { $out .= '<div class="code">' . htmlspecialchars(implode("\n", $buf)) . '</div>'; $buf = []; }
-            $txt = trim(substr(trim($l), 1));
-            if($txt) $out .= '<div class="desc">' . htmlspecialchars($txt) . '</div>';
-        } else { $buf[] = $l; }
-    }
-    if(!empty($buf)) $out .= '<div class="code">' . htmlspecialchars(implode("\n", $buf)) . '</div>';
-    return $out;
+    if(!file_exists($p)) return "File $f not found.";
+    return file_get_contents($p);
 }
 ?>
 <!DOCTYPE html>
@@ -21,7 +11,7 @@ function parseFile($f) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RameShop Guide</title>
+    <title>About Project & Developer</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <style>
         :root {
@@ -51,6 +41,7 @@ function parseFile($f) {
             transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; position: relative; overflow: hidden;
         }
         .box::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 2px 5px rgba(255,255,255,0.15); pointer-events: none; }
+        .box.active { background: var(--accent); border-color: var(--primary); }
         .box:hover { background: var(--accent); border-color: var(--primary); }
         .box:active { transform: scale(0.96); }
         .box h4 { font-size: 0.75rem; font-weight: 800; margin: 0; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -68,13 +59,8 @@ function parseFile($f) {
         .ti { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-sub); font-weight: 800; border-bottom: 1px dashed rgba(122, 92, 67, 0.2); padding-bottom: 10px; margin-bottom: 15px; }
         h3 { font-size: 1.1rem; font-weight: 800; margin: 0 0 15px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .desc { font-size: 0.85rem; color: var(--text-main); margin: 20px 0 8px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-        .desc::before { content: '•'; color: var(--primary); font-size: 1.2rem; }
-        .code { 
-            background: var(--code-bg); color: var(--code-tx); padding: 15px; border-radius: 14px; 
-            font-family: 'SF Mono', monospace; font-size: 0.75rem; overflow-x: auto; margin-bottom: 10px; 
-            white-space: pre-wrap; word-break: break-all; border: 1px solid var(--border); line-height: 1.6;
-        }
+        .p-text { color: var(--text-main); font-size: 0.9rem; text-transform: none; line-height: 1.6; font-weight: 500; letter-spacing: 0; }
+        .p-text strong { color: var(--primary); font-weight: 700; }
 
         .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 25px; }
         .lnk { 
@@ -94,64 +80,54 @@ function parseFile($f) {
 <body>
 
 <div class="head">
-    <h1>Guide Center</h1>
-    <p>AWD-WebUI Integration & Setup</p>
+    <h1>Tentang Kami</h1>
+    <p>AWD-WebUI & AreweDaks</p>
 </div>
 
 <div class="grid">
-    <div class="box" onclick="tg('c1')">
+    <div class="box active" id="b1" onclick="tg('c1', 'b1')">
+        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <h4>AreweDaks</h4>
+    </div>
+    <div class="box" id="b2" onclick="tg('c2', 'b2')">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        <h4>Info Proyek</h4>
+    </div>
+    <div class="box" id="b3" onclick="tg('c3', 'b3')">
+        <svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        <h4>Instalasi</h4>
+    </div>
+    <div class="box" id="b4" onclick="tg('c4', 'b4')">
         <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 18V6h16v12H4zM6 9l4 3-4 3V9zm6 5h6v2h-6v-2z"/></svg>
-        <h4>TTYD Term</h4>
-    </div>
-    <div class="box" onclick="tg('c2')">
-        <svg viewBox="0 0 24 24"><path d="M7.77 6.76L6.23 5.48.82 12l5.41 6.52 1.54-1.28L3.42 12l4.35-5.24zM7 13h2v-2H7v2zm10-2h-2v2h2v-2zm-6 2h2v-2h-2v2zm6.77-7.52l-1.54 1.28L20.58 12l-4.35 5.24 1.54 1.28L23.18 12l-5.41-6.52z"/></svg>
-        <h4>VNStat</h4>
-    </div>
-    <div class="box" onclick="tg('c3')">
-        <svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5a2.5 2.5 0 1 0-5 0V5H4c-1.1 0-2 .9-2 2v3.8h1.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5a2.5 2.5 0 1 0 0-5z"/></svg>
-        <h4>Tailscale</h4>
-    </div>
-    <div class="box" onclick="tg('c4')">
-        <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-        <h4>Hotspot Auto</h4>
-    </div>
-    <div class="box" onclick="tg('c5')">
-        <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 18V6h16v12H4zM6 9l4 3-4 3V9zm6 5h6v2h-6v-2z"/></svg>
-        <h4>Deploy</h4>
+        <h4>Resources</h4>
     </div>
 </div>
 
-<div id="c1" class="item">
-    <div class="ti">Terminal Configuration</div>
-    <h3>TTYD Installation</h3>
-    <?= parseFile('ttyd.txt') ?>
+<div id="c1" class="item show">
+    <div class="ti">Profil Developer</div>
+    <h3>AreweDaks</h3>
+    <p class="p-text">
+        <?= getDescText('developer.txt') ?>
+    </p>
 </div>
 
 <div id="c2" class="item">
-    <div class="ti">Traffic Auditor</div>
-    <h3>VNStat Setup</h3>
-    <?= parseFile('vnstat.txt') ?>
+    <div class="ti">Tentang AWD-WebUI</div>
+    <h3>Cara Kerja Proyek</h3>
+    <p class="p-text">
+        <?= getDescText('project.txt') ?>
+    </p>
 </div>
 
 <div id="c3" class="item">
-    <div class="ti">Virtual Private Network</div>
-    <h3>Tailscale Mesh</h3>
-    <?= parseFile('tailscale.txt') ?>
+    <div class="ti">Panduan Instalasi</div>
+    <h3>Cara Pemasangan</h3>
+    <p class="p-text">
+        <?= getDescText('install.txt') ?>
+    </p>
 </div>
 
 <div id="c4" class="item">
-    <div class="ti">Tethering Controller</div>
-    <h3>Hotspot Automation</h3>
-    <?= parseFile('auto_hotspot.txt') ?>
-</div>
-
-<div id="c5" class="item">
-    <div class="ti">System Initialization</div>
-    <h3>First Install</h3>
-    <?= parseFile('install.txt') ?>
-</div>
-
-<div class="item show">
     <div class="ti">Resources</div>
     
     <div class="cat-title">Termux Environment</div>
@@ -202,10 +178,15 @@ function parseFile($f) {
 </div>
 
 <script>
-function tg(id) {
+function tg(c_id, b_id) {
     document.querySelectorAll('.item').forEach(e => { if(e.id) e.classList.remove('show') });
-    const c = document.getElementById(id);
+    document.querySelectorAll('.box').forEach(e => { e.classList.remove('active') });
+    
+    const c = document.getElementById(c_id);
     if(c) c.classList.add('show');
+    
+    const b = document.getElementById(b_id);
+    if(b) b.classList.add('active');
 }
 </script>
 

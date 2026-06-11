@@ -1,0 +1,4 @@
+Halo! Saya <strong>AreweDaks</strong>, pengembang (*developer*) di balik proyek modifikasi WebUI Android ini.<br><br>
+Proyek ini lahir dari hasrat dan keinginan kuat untuk memaksimalkan potensi perangkat Android, baik yang lawas maupun yang modern. Daripada HP Android tidak terpakai, mengapa tidak disulap menjadi <strong>Router Cerdas (Smart Router)</strong> yang beroperasi 24/7 dengan kestabilan luar biasa bak router pabrikan?
+<br><br>
+Saya memiliki ketertarikan mendalam pada sistem operasi Android, manipulasi jaringan seluler pada level <em>Root</em>, *Reverse Engineering* aplikasi, dan penciptaan antarmuka web (UI) yang memanjakan mata sekaligus fungsional. Misi saya adalah menjembatani kompleksitas perintah *backend* Linux/Android dengan pengalaman pengguna (*User Experience*) yang sangat mulus.

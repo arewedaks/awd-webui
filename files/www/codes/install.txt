@@ -1,16 +1,8 @@
-/Pastikan terinstall
-/1. Termux
-/2. Termux:API
-/3. Termux:boot (Opsional)
-/Selanjutnya buka Termux copas d bawah ini ke Termux:
-pkg update && pkg upgrade -y
-/Enter
-pkg install root-repo
-/Enter
-pkg install vnstat vnstati python ffmpeg termux-api ttyd 
-/Enter
-/Buka termux:API
-/Beri semua izin / permission di info aplikasi
-/Termux:boot kegunaanya ada di menu ttyd
-/REBOOT / CABUT DAYA
-/SELESAI
+Untuk mendapatkan pengalaman maksimal dari WebUI ini, ikuti langkah pemasangan berikut:<br><br>
+1. <strong>Persiapan Root:</strong> Pastikan perangkat Android Anda sudah terbuka akses <em>Root</em>-nya (disarankan menggunakan Magisk, KernelSU, atau APatch).<br><br>
+2. <strong>Flashing Modul:</strong> Buka Magisk Manager, masuk ke menu Modul, lalu instal file ZIP konfigurasi AWD WebUI ini. Setelah sukses terpasang, lakukan <strong>Reboot</strong> pada perangkat Anda.<br><br>
+3. <strong>Eksekusi LSPosed:</strong> Agar fitur manipulasi Hotspot kustom (ganti nama SSID dll tanpa *reboot*) bekerja sempurna, pastikan Anda juga sudah menginstal *framework* LSPosed. Instal APK <strong>SoftApHelper</strong> (ada di menu *Resources*), buka aplikasi LSPosed Manager, aktifkan modul tersebut, centang <em>System Framework</em> dan <em>com.android.wifi</em> (khusus Android 11+), lalu <strong>Reboot sekali lagi</strong>.<br><br>
+4. <strong>Akses Dashboard:</strong> Nyalakan Hotspot atau USB Tethering HP Anda. Sambungkan perangkat klien (seperti Laptop/PC/HP lain). Buka *browser* (seperti Chrome/Safari) lalu ketik alamat IP <em>Gateway</em>. Secara *default* alamat IP-nya adalah:
+<br>&nbsp;&nbsp;• Hotspot WiFi: <strong>192.168.8.1</strong>
+<br>&nbsp;&nbsp;• USB Tethering: <strong>192.168.42.1</strong><br><br>
+5. <strong>Selesai!</strong> Kini seluruh arsitektur jaringan Android berada di bawah kendali telunjuk Anda.

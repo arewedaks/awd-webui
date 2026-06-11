@@ -1,0 +1,8 @@
+<strong>AWD WebUI</strong> bukan sekadar halaman web pemantauan biasa. Ini adalah <strong>Pusat Komando (Command Center)</strong> super canggih yang berjalan di atas server web PHP mandiri, tertanam langsung di sistem Android Anda berkat keajaiban Magisk.<br><br>
+Halaman Web ini dibekali dengan hak akses <strong>Root</strong> (via <code>su</code>). Artinya, Anda tidak hanya memantau, namun Anda secara aktif memerintahkan sistem operasi Android untuk melakukan hal-hal ajaib yang sebelumnya mustahil dilakukan oleh aplikasi biasa:
+<br><br>
+• Mengatur prioritas koneksi seluler, APN, dan membaca status *real-time* jaringan.<br>
+• Menembus limit/batasan kuota <em>tethering</em> (Bypass TTL & Masking Metered).<br>
+• Memaksa perubahan alamat IP, Nama WiFi (SSID), dan Kata Sandi *hotspot* <strong>tanpa melakukan restart/reboot perangkat</strong> (bekerja sama erat dengan modul LSPosed <strong>SoftApHelper</strong> buatan kami).<br>
+• Mengelola batas kecepatan (<em>Bandwidth Limiter / QoS</em>) per-klien klien yang tersambung menggunakan protokol <em>Traffic Control</em> (<code>tc</code>) yang ada di kernel Linux.<br>
+• Menjalankan SMS jarak jauh, *Terminal Exec*, dan berbagai fungsi peretasan ringan lainnya.

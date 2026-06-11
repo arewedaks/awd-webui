@@ -5,38 +5,78 @@ function getSystemData($command, $default = 'N/A') {
     return trim($output) !== '' ? trim($output) : $default;
 }
 
-$signalInfo = getSystemData('dumpsys telephony.registry');
 $operatorRaw = getSystemData('getprop gsm.sim.operator.alpha');
 $simNames = explode(',', $operatorRaw);
 $signalData = [];
 
-if (!empty($signalInfo)) {
-    if (preg_match_all('/CellSignalStrengthLte:(.+?)(?=CellSignalStrength|$)/s', $signalInfo, $lteMatches)) {
-        foreach ($lteMatches[1] as $index => $lteData) {
-            if ($index > 1) break; 
-            preg_match('/rssi\s*=\s*([-\d]+)/i', $lteData, $rssi);
-            preg_match('/rsrp\s*=\s*([-\d]+)/i', $lteData, $rsrp);
-            preg_match('/rsrq\s*=\s*([-\d]+)/i', $lteData, $rsrq);
-            preg_match('/rssnr\s*=\s*([-\d]+)/i', $lteData, $rssnr);
-            preg_match('/level\s*=\s*(\d)/i', $lteData, $level);
-            $lvl = (int)($level[1] ?? 0);
-            $val_rsrp = $rsrp[1] ?? 0;
-            if ($lvl == 0 && abs($val_rsrp) > 140) continue;
-            $v_rsrq = (isset($rsrq[1]) && abs($rsrq[1]) < 1000) ? $rsrq[1] : 'N/A';
-            $v_sinr = (isset($rssnr[1]) && abs($rssnr[1]) < 1000) ? $rssnr[1] : 'N/A';
-            $providerName = isset($simNames[$index]) && !empty(trim($simNames[$index])) ? trim($simNames[$index]) : "SIM " . ($index + 1);
-            $signalData[] = [
-                'provider' => $providerName, 'type' => 'LTE', 'rssi' => $rssi[1] ?? 'N/A',
-                'rsrp' => $rsrp[1] ?? 'N/A', 'rsrq' => $v_rsrq, 'sinr' => $v_sinr, 'level' => $lvl,
-            ];
+$jsonFile1 = '/data/adb/php8/files/tmp/awd_signal.json';
+$jsonFile2 = '/data/system/awd_signal.json';
+$signalInfoRaw = [];
+
+if (file_exists($jsonFile1)) {
+    $signalInfoRaw = json_decode(file_get_contents($jsonFile1), true);
+} elseif (file_exists($jsonFile2)) {
+    $signalInfoRaw = json_decode(file_get_contents($jsonFile2), true);
+}
+
+if (!empty($signalInfoRaw) && is_array($signalInfoRaw)) {
+    foreach ($signalInfoRaw as $index => $rawSignalString) {
+        if ($index > 1) break; 
+        
+        $actualLteData = $rawSignalString;
+        if (preg_match('/CellSignalStrengthLte:(.+?)(?=CellSignalStrength|$)/i', $rawSignalString, $lteMatch)) {
+            $actualLteData = $lteMatch[1];
+        }
+
+        preg_match('/rssi\s*=\s*([-\d]+)/i', $actualLteData, $rssi);
+        preg_match('/rsrp\s*=\s*([-\d]+)/i', $actualLteData, $rsrp);
+        preg_match('/rsrq\s*=\s*([-\d]+)/i', $actualLteData, $rsrq);
+        preg_match('/rssnr\s*=\s*([-\d]+)/i', $actualLteData, $rssnr);
+        preg_match('/level\s*=\s*(\d)/i', $actualLteData, $level);
+        
+        $lvl = (int)($level[1] ?? 0);
+        $val_rsrp = $rsrp[1] ?? 0;
+        if ($lvl == 0 && abs($val_rsrp) > 140) continue;
+        
+        $v_rsrq = (isset($rsrq[1]) && abs($rsrq[1]) < 1000) ? $rsrq[1] : 'N/A';
+        $v_sinr = (isset($rssnr[1]) && abs($rssnr[1]) < 1000) ? $rssnr[1] : 'N/A';
+        $providerName = isset($simNames[$index]) && !empty(trim($simNames[$index])) ? trim($simNames[$index]) : "SIM " . ($index + 1);
+        
+        $signalData[] = [
+            'slot' => "SIM " . ($index + 1), 'provider' => $providerName, 'type' => 'LTE', 'rssi' => $rssi[1] ?? 'N/A',
+            'rsrp' => $rsrp[1] ?? 'N/A', 'rsrq' => $v_rsrq, 'sinr' => $v_sinr, 'level' => $lvl,
+        ];
+    }
+} else {
+    $signalInfo = getSystemData('dumpsys telephony.registry');
+    if (!empty($signalInfo)) {
+        if (preg_match_all('/CellSignalStrengthLte:(.+?)(?=CellSignalStrength|$)/s', $signalInfo, $lteMatches)) {
+            foreach ($lteMatches[1] as $index => $lteData) {
+                if ($index > 1) break; 
+                preg_match('/rssi\s*=\s*([-\d]+)/i', $lteData, $rssi);
+                preg_match('/rsrp\s*=\s*([-\d]+)/i', $lteData, $rsrp);
+                preg_match('/rsrq\s*=\s*([-\d]+)/i', $lteData, $rsrq);
+                preg_match('/rssnr\s*=\s*([-\d]+)/i', $lteData, $rssnr);
+                preg_match('/level\s*=\s*(\d)/i', $lteData, $level);
+                $lvl = (int)($level[1] ?? 0);
+                $val_rsrp = $rsrp[1] ?? 0;
+                if ($lvl == 0 && abs($val_rsrp) > 140) continue;
+                $v_rsrq = (isset($rsrq[1]) && abs($rsrq[1]) < 1000) ? $rsrq[1] : 'N/A';
+                $v_sinr = (isset($rssnr[1]) && abs($rssnr[1]) < 1000) ? $rssnr[1] : 'N/A';
+                $providerName = isset($simNames[$index]) && !empty(trim($simNames[$index])) ? trim($simNames[$index]) : "SIM " . ($index + 1);
+                $signalData[] = [
+                    'slot' => "SIM " . ($index + 1), 'provider' => $providerName, 'type' => 'LTE', 'rssi' => $rssi[1] ?? 'N/A',
+                    'rsrp' => $rsrp[1] ?? 'N/A', 'rsrq' => $v_rsrq, 'sinr' => $v_sinr, 'level' => $lvl,
+                ];
+            }
         }
     }
 }
 
 if (empty($signalData) && !empty($operatorRaw)) {
-    foreach($simNames as $nm) {
+    foreach($simNames as $index => $nm) {
         if(empty(trim($nm))) continue;
-        $signalData[] = [ 'provider' => $nm, 'type' => 'NO SIGNAL', 'rssi' => 'N/A', 'rsrp' => 'N/A', 'rsrq' => 'N/A', 'sinr' => 'N/A', 'level' => 0 ];
+        $signalData[] = [ 'slot' => "SIM " . ($index + 1), 'provider' => $nm, 'type' => 'NO SIGNAL', 'rssi' => 'N/A', 'rsrp' => 'N/A', 'rsrq' => 'N/A', 'sinr' => 'N/A', 'level' => 0 ];
     }
 }
 
@@ -121,6 +161,7 @@ function getWidth($val, $type) {
             <div class="sec">
                 <div class="sec-hd">
                     <div style="display:flex; align-items:center;">
+                        <span style="font-size: 0.7rem; background: rgba(122, 92, 67, 0.2); color: var(--text-main); padding: 3px 8px; border-radius: 6px; font-weight: 800; margin-right: 10px; border: 1px solid var(--border);"><?= $sig['slot'] ?></span>
                         <span class="prov"><?= htmlspecialchars($sig['provider']) ?></span>
                         <span class="type-badge"><?= $sig['type'] ?></span>
                     </div>

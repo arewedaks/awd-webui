@@ -244,7 +244,7 @@ sort($uniqueSenders);
                     <div class="conv-body">
                         <?php foreach($msgs as $m): ?>
                             <div class="sub-msg">
-                                <span class="sub-date"><?= date('d M Y, H:i', $m['date']/1000) ?></span>
+                                <span class="sub-date"><?= date('d M Y, H:i', (int)($m['date']/1000)) ?></span>
                                 <div class="sub-text"><?= htmlspecialchars($m['body']) ?></div>
                                 <form method="POST" onsubmit="return confirm('Hapus pesan ini?')">
                                     <input type="hidden" name="action" value="delete">
