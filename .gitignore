@@ -1,2 +1,24 @@
 # Android project for Modem Signal Broadcasting
 /SoftApHelper/
+
+# Build outputs
+/app/release/
+/app/build/
+
+# Magisk module generated zip
+*.zip
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+local.properties
+.DS_Store
+Thumbs.db
+
+# Logs and Temp files
+*.log
+/tmp/
+/temp/
