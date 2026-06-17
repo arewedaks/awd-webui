@@ -458,7 +458,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     Updates & Info <svg class="icon arrow" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
                 <div class="dropdown-container">
-                    <a onclick="loadContent('/auth/updater.php')">OTA Updater</a>
+                    <a onclick="loadContent('/tools/updater.php')">OTA Updater</a>
                     <a onclick="loadContent('about.php')">Readme</a>
                 </div>
             </li>

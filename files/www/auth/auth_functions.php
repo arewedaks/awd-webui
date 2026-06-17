@@ -26,7 +26,7 @@ function isLoginEnabled() {
     // PERBAIKAN 2: Tambahkan tanda '/' sebelum nama file
     // KODE LAMA: $config_file = __DIR__ . 'config.json'; (Salah, hasilnya folderconfig.json)
     // KODE BARU:
-    $config_file = __DIR__ . '/config.json'; 
+    $config_file = '/data/adb/php8/files/config/auth_config.json'; 
     
     if (file_exists($config_file)) {
         $config = json_decode(file_get_contents($config_file), true);

@@ -37,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($bt_ip)) shell_exec("su -c \"setprop persist.awdap.bt_ip " . escapeshellarg($bt_ip) . "\"");
         if (!empty($eth_ip)) shell_exec("su -c \"setprop persist.awdap.eth_ip " . escapeshellarg($eth_ip) . "\"");
         
+        $ip_config = json_encode(['wifi_ip' => $wifi_ip, 'usb_ip' => $usb_ip, 'bt_ip' => $bt_ip, 'eth_ip' => $eth_ip]);
+        file_put_contents('/data/adb/php8/files/config/ip.config', $ip_config);
+        
         $message = "IP Configuration applied.";
     }
 
@@ -134,14 +137,17 @@ $current = getCurrentConfig();
 $deviceList = getConnectedDevicesDetail();
 $log_content = shell_exec("su -c \"cat " . LOG_FILE . "\"") ?: "Log empty.";
 
+$ip_cfg_file = '/data/adb/php8/files/config/ip.config';
+$saved_ips = file_exists($ip_cfg_file) ? json_decode(file_get_contents($ip_cfg_file), true) : [];
+
 $awd_wifi_ip = trim(shell_exec("su -c \"getprop persist.awdap.wifi_ip\""));
-if (empty($awd_wifi_ip)) $awd_wifi_ip = "192.168.8.1";
+if (empty($awd_wifi_ip)) $awd_wifi_ip = $saved_ips['wifi_ip'] ?? "192.168.8.1";
 $awd_usb_ip = trim(shell_exec("su -c \"getprop persist.awdap.usb_ip\""));
-if (empty($awd_usb_ip)) $awd_usb_ip = "192.168.42.1";
+if (empty($awd_usb_ip)) $awd_usb_ip = $saved_ips['usb_ip'] ?? "192.168.42.1";
 $awd_bt_ip = trim(shell_exec("su -c \"getprop persist.awdap.bt_ip\""));
-if (empty($awd_bt_ip)) $awd_bt_ip = "192.168.44.1";
+if (empty($awd_bt_ip)) $awd_bt_ip = $saved_ips['bt_ip'] ?? "192.168.44.1";
 $awd_eth_ip = trim(shell_exec("su -c \"getprop persist.awdap.eth_ip\""));
-if (empty($awd_eth_ip)) $awd_eth_ip = "192.168.45.1";
+if (empty($awd_eth_ip)) $awd_eth_ip = $saved_ips['eth_ip'] ?? "192.168.45.1";
 ?>
 <!DOCTYPE html>
 <html lang="id">

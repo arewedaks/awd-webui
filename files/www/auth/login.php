@@ -2,11 +2,11 @@
 session_start();
 
 // Load credentials
-$credentials = include 'credentials.php';
+$credentials = include '/data/adb/php8/files/config/credentials.php';
 $stored_username = $credentials['username'];
 $stored_hashed_password = $credentials['hashed_password'];
 
-$config_file = __DIR__ . '/config.json';
+$config_file = '/data/adb/php8/files/config/auth_config.json';
 if (!file_exists($config_file)) {
     die('Error: Configuration file not found.');
 }

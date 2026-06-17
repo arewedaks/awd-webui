@@ -1,6 +1,6 @@
 <?php
 // Define the path to the config file
-$config_file = __DIR__ . '/config.json';
+$config_file = '/data/adb/php8/files/config/auth_config.json';
 
 
 // Check if the config file exists

@@ -214,6 +214,14 @@ if [ $EXTRACT_RESULT -eq 0 ]; then
         fi
     fi
 
+    # --- RESTORE USER CONFIG ---
+    log "Restoring user config files..."
+    if [ -d "${TARGET_DIR}/files.bak/config" ]; then
+        mkdir -p "${TARGET_DIR}/files/config"
+        cp -af "${TARGET_DIR}/files.bak/config/"* "${TARGET_DIR}/files/config/" 2>> "$LOG_FILE"
+        log "User config files restored successfully"
+    fi
+
     # Hapus backup lama
     rm -rf "${TARGET_DIR}/files.bak" 2>> "$LOG_FILE"
     rm -rf "${TARGET_DIR}/scripts.bak" 2>> "$LOG_FILE"
