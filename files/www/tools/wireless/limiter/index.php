@@ -1,8 +1,8 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 $coreScript = '/data/adb/php8/scripts/core_bw';
-$ruleFile   = __DIR__ . '/rules.txt';
-$dbFile     = __DIR__ . '/limits_mac.json';
+$ruleFile   = '/data/adb/php8/files/config/rules.txt';
+$dbFile     = '/data/adb/php8/files/config/limits_mac.json';
 $cfgFile    = '/data/adb/php8/files/config/onboot.cfg';
 
 $data = file_exists($dbFile) ? json_decode(file_get_contents($dbFile), true) : [];

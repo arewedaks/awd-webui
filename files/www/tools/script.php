@@ -1,5 +1,11 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
+require_once '/data/adb/php8/files/www/utils.php';
+
+if (!is_pro_user()) {
+    render_pro_lock_screen('Advanced Custom Scripts');
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $interface = $_POST['interface'];
     $action_type = $_POST['action_type'];

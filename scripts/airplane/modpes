@@ -7,8 +7,10 @@ ip=''
 
 # --- DEFINISI DIRECTORY ---
 MODDIR=${0%/*}
-LOG_FILE="$MODDIR/connection.log"
-PID_FILE="$MODDIR/connection.pid"
+TMP_DIR="/data/adb/php8/files/tmp"
+mkdir -p "$TMP_DIR"
+LOG_FILE="$TMP_DIR/connection.log"
+PID_FILE="$TMP_DIR/connection.pid"
 timeout_count=0
 
 get_host_from_url() {

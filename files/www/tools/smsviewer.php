@@ -2,6 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
+require_once '/data/adb/php8/files/www/utils.php';
 
 // Bypass SELinux & Root Prep
 shell_exec("su -c 'setenforce 0' 2>&1");
@@ -11,28 +12,8 @@ function executeCmd($cmd) {
     return shell_exec("su -mm -c " . escapeshellarg($cmd) . " 2>&1");
 }
 
-function isTermuxApiAvailable() {
-    $check = shell_exec("su -c 'pm path com.termux.api'");
-    return (!empty($check) && strpos($check, 'package:') !== false);
-}
-
 function getSmsMessages() {
     $messages = [];
-    if (isTermuxApiAvailable()) {
-        $output = executeCmd("termux-sms-list -l 500");
-        $data = json_decode($output, true);
-        if (!empty($data) && is_array($data)) {
-            foreach ($data as $sms) {
-                $messages[] = [
-                    'id'      => $sms['_id'] ?? $sms['id'] ?? 0,
-                    'address' => $sms['number'] ?? $sms['address'] ?? 'Unknown',
-                    'body'    => $sms['body'] ?? '',
-                    'date'    => isset($sms['received']) ? strtotime($sms['received']) * 1000 : time() * 1000
-                ];
-            }
-            return $messages;
-        }
-    }
     $cmd = "content query --uri content://sms --projection _id:address:date:body --sort 'date DESC LIMIT 500'";
     $raw = executeCmd($cmd);
     if (!empty($raw) && strpos($raw, 'Row:') !== false) {
@@ -56,17 +37,25 @@ function getSmsMessages() {
 }
 
 function sendSms($number, $message) {
-    if (isTermuxApiAvailable()) {
-        $res = executeCmd("termux-sms-send -n " . escapeshellarg($number) . " " . escapeshellarg($message));
-        if (empty($res) || strpos($res, "not found") === false) return true;
-    }
-    $dest = escapeshellarg($number); $text = escapeshellarg($message); $pkg = "\"com.android.shell\"";
-    executeCmd("service call isms 5 s16 $pkg s16 $dest s16 \"\" s16 $text i32 0 i32 0 i64 0 i32 1");
+    $dest = escapeshellarg($number); 
+    $text = escapeshellarg($message);
+    
+    // Pastikan aplikasi SoftApHelper memiliki izin mengirim SMS
+    executeCmd("pm grant com.awd.modemtools android.permission.SEND_SMS");
+    
+    // Coba kirim via aplikasi SoftApHelper (Broadcast)
+    executeCmd("am broadcast -a com.awd.modemtools.SEND_SMS -n com.awd.modemtools/.SmsReceiver -e number $dest -e message $text");
+    
     return true;
 }
 
 function deleteSms($id) {
-    return executeCmd("content delete --uri content://sms --where \"_id=" . intval($id) . "\"");
+    // Memberikan izin AppOps WRITE_SMS agar aplikasi bisa menghapus pesan secara native (tanpa minta root di app)
+    executeCmd("appops set com.awd.modemtools WRITE_SMS allow");
+    
+    // Menggunakan aplikasi SoftApHelper untuk mengeksekusi penghapusan SMS (Universal)
+    $safeId = escapeshellarg(intval($id));
+    return executeCmd("am broadcast -a com.awd.modemtools.DELETE_SMS -n com.awd.modemtools/.SmsReceiver -e id $safeId");
 }
 
 // --- LOGIC HANDLING ---
@@ -76,6 +65,9 @@ $notification = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         if ($_POST['action'] === 'send') {
+            if (!is_pro_user()) {
+                die("Akses ditolak: Fitur Pro.");
+            }
             sendSms($_POST['number'], $_POST['message']);
             $notification = "Terkirim!";
         } elseif ($_POST['action'] === 'delete') {
@@ -206,7 +198,7 @@ sort($uniqueSenders);
 
     <div class="header">
         <h2>SMS Viewer</h2>
-        <span class="mode-badge"><?= isTermuxApiAvailable() ? 'API' : 'ROOT' ?> MODE</span>
+        <span class="mode-badge">ROOT MODE</span>
     </div>
 
     <?php if($notification): ?> <div class="notif" id="notif"><?= $notification ?></div> <?php endif; ?>
@@ -259,14 +251,18 @@ sort($uniqueSenders);
         <?php endif; ?>
 
     <?php elseif ($activeTab == 'send'): ?>
-        <div class="form-box">
-            <form method="POST">
-                <input type="hidden" name="action" value="send">
-                <input type="text" name="number" class="filter-input" style="margin-bottom:12px;" placeholder="Nomor Tujuan" required>
-                <textarea name="message" class="filter-input" style="height:120px; margin-bottom:15px; padding-top:10px;" placeholder="Pesan..." required></textarea>
-                <button type="submit" class="filter-btn" style="width:100%;">Kirim Sekarang</button>
-            </form>
-        </div>
+        <?php if (!is_pro_user()): ?>
+            <?php render_pro_lock_screen("Kirim Pesan SMS"); ?>
+        <?php else: ?>
+            <div class="form-box">
+                <form method="POST">
+                    <input type="hidden" name="action" value="send">
+                    <input type="text" name="number" class="filter-input" style="margin-bottom:12px;" placeholder="Nomor Tujuan" required>
+                    <textarea name="message" class="filter-input" style="height:120px; margin-bottom:15px; padding-top:10px;" placeholder="Pesan..." required></textarea>
+                    <button type="submit" class="filter-btn" style="width:100%;">Kirim Sekarang</button>
+                </form>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <script>

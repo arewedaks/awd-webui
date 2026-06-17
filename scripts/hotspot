@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-LOG_FILE="/data/local/tmp/wifi_log.txt"
+LOG_FILE="/data/adb/php8/files/tmp/hotspot.log"
 
 log() {
     echo "[$(date '+%H:%M:%S')] $1" >> "$LOG_FILE"

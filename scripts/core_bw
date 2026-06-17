@@ -4,9 +4,9 @@
 # CORE BACKEND: FORWARD MARKING
 # ==========================================
 
-BASE_DIR="/data/adb/php8/files/www/tools/wireless/limiter"
+BASE_DIR="/data/adb/php8/files/config"
 LIMIT_FILE="${BASE_DIR}/rules.txt"
-LOG_FILE="${BASE_DIR}/debug.log"
+LOG_FILE="/data/adb/php8/files/tmp/debug.log"
 
 log() { echo "[$(date '+%H:%M:%S')] $1" >> "$LOG_FILE"; }
 

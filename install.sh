@@ -131,12 +131,23 @@ if [ -d "${EXTRACT_DIR}/app" ]; then
             echo "  -> Menginstal ${APK_NAME}..."
             
             # Gunakan cmd package untuk silent install, fallback ke pm install
+            INSTALL_SUCCESS=0
             if cmd package install -r -d "$APK_FILE" > /dev/null 2>&1; then
                 echo "     [OK] Berhasil diinstal"
+                INSTALL_SUCCESS=1
             elif pm install -r "$APK_FILE" > /dev/null 2>&1; then
                 echo "     [OK] Berhasil diinstal (via pm fallback)"
+                INSTALL_SUCCESS=1
             else
                 echo "     [FAIL] Gagal menginstal ${APK_NAME}"
+            fi
+            
+            # Jika aplikasi adalah SoftApHelper (com.awd.modemtools), langsung suntikkan izin rahasia
+            if [ "$INSTALL_SUCCESS" -eq 1 ]; then
+                # Kita tidak tahu nama file APK aslinya, jadi tembak saja nama package-nya, jika ada tidak akan error.
+                pm grant com.awd.modemtools android.permission.SEND_SMS > /dev/null 2>&1
+                appops set com.awd.modemtools WRITE_SMS allow > /dev/null 2>&1
+                echo "     [OK] Menyuntikkan Izin Kirim/Hapus SMS Otomatis (Jika berlaku)"
             fi
         done
     else
@@ -279,8 +290,29 @@ if [ -f "/data/adb/lspd/config/modules_config.db" ] && [ -f "${PHP_DATA_DIR}/fil
     ${PHP_DATA_DIR}/files/bin/php -r "
         try {
             \$db = new SQLite3('/data/adb/lspd/config/modules_config.db');
+            
+            // Aktifkan modul
             \$db->exec(\"INSERT INTO modules_state (module_pkg_name, user_id, enabled, scope_request_blocked) VALUES ('com.awd.modemtools', 0, 1, 0) ON CONFLICT(module_pkg_name, user_id) DO UPDATE SET enabled=1\");
-            echo \"  -> Modul AWD Modem berhasil diaktifkan di database LSPosed [OK]\n\";
+            
+            // Daftar aplikasi/framework yang harus dicentang (Scope)
+            // PERBAIKAN: Gunakan 'system' bukan 'android'
+            \$scopes = [
+                'system', 
+                'com.android.networkstack.tethering', 
+                'com.android.networkstack.tethering.inprocess',
+                'com.google.android.networkstack.tethering',
+                'com.google.android.networkstack.tethering.inprocess',
+                'com.android.wifi'
+            ];
+            
+            foreach (\$scopes as \$pkg) {
+                // Skema LSPosed baru
+                @\$db->exec(\"INSERT OR IGNORE INTO scopes (module_pkg_name, user_id, app_pkg_name) VALUES ('com.awd.modemtools', 0, '\$pkg')\");
+                // Skema LSPosed lama (fallback)
+                @\$db->exec(\"INSERT OR IGNORE INTO scope (module_pkg_name, user_id, app_pkg_name) VALUES ('com.awd.modemtools', 0, '\$pkg')\");
+            }
+            
+            echo \"  -> Modul AWD Modem & System Framework (Scope) berhasil diaktifkan [OK]\n\";
         } catch (Exception \$e) {
             echo \"  -> Gagal mengaktifkan modul: \" . \$e->getMessage() . \" [FAIL]\n\";
         }

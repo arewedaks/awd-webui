@@ -7,6 +7,10 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!is_pro_user()) {
+    render_pro_lock_screen('APK Manager (App Controller)');
+}
+
 // --- FORCE REFRESH HANDLER ---
 if (isset($_GET['refresh'])) {
     unset($_SESSION['app_cache']);

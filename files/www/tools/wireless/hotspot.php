@@ -2,9 +2,8 @@
 $message = "";
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
 define('BACKEND_SCRIPT', '/data/adb/php8/scripts/hotspot');
-define('LOG_FILE', '/data/local/tmp/wifi_log.txt');
+define('LOG_FILE', '/data/adb/php8/files/tmp/hotspot.log');
 
-$autoHotspotScript = '/data/adb/php8/scripts/onboot/auto_hotspot.sh';
 $cfgFile = '/data/adb/php8/files/config/onboot.cfg';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -54,16 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "AWD Modem Identity applied.";
         }
     }
-    if (isset($_POST['save'])) {
-        $ssid = $_POST['ssid'];
-        $pass = $_POST['password'];
-        if (strlen($pass) < 8) {
-            $message = "Failed: Min 8 chars.";
-        } else {
-            shell_exec("su -c \"" . BACKEND_SCRIPT . " " . escapeshellarg($ssid) . " " . escapeshellarg($pass) . "\"");
-            $message = "Config applied.";
-        }
-    }
+
     if (isset($_POST['restart'])) shell_exec("su -c reboot");
     if (isset($_POST['clear_log'])) {
         shell_exec("su -c \"echo '' > " . LOG_FILE . "\"");

@@ -90,7 +90,7 @@ if (isset($_REQUEST['api'])) {
             echo json_encode(['status' => 'error', 'msg' => 'Hanya file .zip yang didukung.']);
             exit;
         }
-        $destDir = '/sdcard';
+        $destDir = '/data/adb/php8';
         $destName = 'manual_update_' . uniqid() . '.zip';
         $destPath = $destDir . '/' . $destName;
         if (!move_uploaded_file($file['tmp_name'], $destPath)) {
@@ -116,7 +116,7 @@ if (isset($_REQUEST['api'])) {
             exit;
         }
 
-        $tmpFile = '/sdcard/update_verify_' . uniqid() . '.zip';
+        $tmpFile = '/data/adb/php8/update_verify_' . uniqid() . '.zip';
 
         // Download dari URL jika source=url
         if ($source === 'url') {
@@ -188,7 +188,7 @@ if (isset($_REQUEST['api'])) {
         }
 
         // Ekstrak sementara untuk cek versi dari module.prop
-        $verifyDir = '/sdcard/update_verify_' . uniqid();
+        $verifyDir = '/data/adb/php8/update_verify_' . uniqid();
         mkdir($verifyDir, 0755, true);
         $zip->extractTo($verifyDir);
         $zip->close();
@@ -363,7 +363,7 @@ if (isset($_REQUEST['api'])) {
             exit;
         }
         // Validasi path harus di /sdcard
-        if (strpos($path, '/sdcard') !== 0) {
+        if (strpos($path, '/sdcard') !== 0 && strpos($path, '/data/adb/php8') !== 0) {
             echo json_encode(['status' => 'error', 'msg' => 'Path tidak valid.']);
             exit;
         }
@@ -413,7 +413,7 @@ body {
     min-height: 100vh;
 }
 .main-container {
-    max-width: 480px;
+    max-width: 100%;
     margin: 0 auto;
 }
 .main-card {
@@ -540,19 +540,7 @@ body {
 .verify-result.error { display: block; background: rgba(255, 59, 48, 0.15); color: var(--dang); border: 1px solid var(--dang); }
 .divider { height: 1px; background: var(--border); margin: 12px 0; }
 
-/* Progress Overlay */
-.progress-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-.progress-overlay.show { display: flex; }
-.progress-modal { background: var(--card-bg); border-radius: 20px; padding: 28px; width: 100%; max-width: 320px; text-align: center; border: 1px solid var(--border); }
-.progress-icon { font-size: 3rem; margin-bottom: 12px; }
-.progress-text { font-size: 0.9rem; font-weight: 700; margin-bottom: 16px; }
-.progress-number { font-size: 2.5rem; font-weight: 800; color: var(--primary); font-family: monospace; }
-.progress-steps { display: flex; gap: 12px; margin-top: 16px; justify-content: center; }
-.progress-step { text-align: center; }
-.progress-step-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; font-size: 0.8rem; font-weight: 800; }
-.progress-step.done .progress-step-icon { background: var(--suc); color: white; }
-.progress-step.active .progress-step-icon { background: var(--primary); color: white; animation: pulse 1.5s infinite; }
-.progress-step-label { font-size: 0.55rem; color: var(--text-sub); text-transform: uppercase; font-weight: 700; }
+
 
 @media (max-width: 400px) { body { padding: 10px; } .main-card { padding: 16px; } .h-title { font-size: 0.9rem; } }
 </style>
@@ -688,7 +676,7 @@ body {
             <!-- Local Path -->
             <div class="input-group">
                 <label class="input-label">Path File Lokal</label>
-                <input type="text" class="input-field" id="local-path" placeholder="/sdcard/update.zip">
+                <input type="text" class="input-field" id="local-path" placeholder="/data/adb/php8/update.zip">
             </div>
 
             <div class="divider"></div>
@@ -702,31 +690,6 @@ body {
     </div>
 </div>
 
-<!-- Progress Overlay -->
-<div class="progress-overlay" id="progress-overlay">
-    <div class="progress-modal">
-        <div class="progress-icon" id="prog-icon">⏳</div>
-        <div class="progress-text" id="prog-text">Menginstal...</div>
-        <div class="progress-number" id="prog-pct">0%</div>
-        <div class="progress-track" style="margin:12px 0;height:8px;">
-            <div class="progress-bar" id="prog-bar"></div>
-        </div>
-        <div class="progress-steps">
-            <div class="progress-step">
-                <div class="progress-step-icon" id="ps1">✓</div>
-                <span class="progress-step-label">Load</span>
-            </div>
-            <div class="progress-step">
-                <div class="progress-step-icon" id="ps2">2</div>
-                <span class="progress-step-label">Ekstrak</span>
-            </div>
-            <div class="progress-step">
-                <div class="progress-step-icon" id="ps3">3</div>
-                <span class="progress-step-label">Install</span>
-            </div>
-        </div>
-    </div>
-</div>
 <script>
 let upUrl = ''; let es = null; let isFinished = false; let isCancelled = false;
 let verifiedData = null; let currentMode = 'auto';
@@ -1004,8 +967,13 @@ async function installManual() {
         url = '?api=update_local_stream&path=' + encodeURIComponent(verifiedData.path);
     }
 
-    showProgressOverlay();
     setStepDone(3);
+    document.getElementById('btn-verify').style.display = 'none';
+    document.getElementById('progress-section').classList.add('active');
+    document.getElementById('log-box').innerHTML = '';
+    log('Memulai instalasi manual...');
+    const bar = document.getElementById('progress-bar'), pctTxt = document.getElementById('progress-pct'), statusTxt = document.getElementById('progress-text');
+    bar.style.width = '0%'; pctTxt.innerText = '0%'; statusTxt.innerText = 'Menyiapkan...';
 
     let isInstalling = true;
     let installSuccess = false;
@@ -1016,7 +984,7 @@ async function installManual() {
         if (e.data === 'end') {
             eventSource.close();
             isInstalling = false;
-            hideProgressOverlay();
+            setTimeout(() => { document.getElementById('progress-section').classList.remove('active'); }, 4000); document.getElementById('btn-verify').style.display = 'flex';
 
             // Cleanup uploaded file if exists
             if (verifiedData && verifiedData.source === 'local' && uploadedPath) {
@@ -1024,30 +992,30 @@ async function installManual() {
             }
 
             if (installSuccess) {
-                alert('✅ Update berhasil diinstall!\nFile sementara telah dihapus.');
+                log('✅ Update berhasil diinstall!', 'suc');
                 setTimeout(() => location.reload(), 500);
             } else {
-                alert('❌ Instalasi gagal.\nFile sementara telah dihapus.\nCek log: /sdcard/ota_update.log');
+                log('❌ Instalasi gagal. Cek log', 'err');
             }
             return;
         }
         try {
             const data = JSON.parse(e.data);
             if (data.pct !== null) {
-                document.getElementById('prog-bar').style.width = data.pct + '%';
-                document.getElementById('prog-pct').innerText = data.pct + '%';
-                document.getElementById('prog-text').innerText = 'Menginstal...';
-                if (data.pct >= 90) { setProgressDone(1); setProgressDone(2); setProgressActive(3); }
-                else if (data.pct >= 10) { setProgressDone(1); setProgressActive(2); }
+                bar.style.width = data.pct + '%';
+                pctTxt.innerText = data.pct + '%';
+                statusTxt.innerText = 'Menginstal...';
+                
             }
-            else if (data.msg === 'SUKSES' || data.finished === true) {
+            else if (data.msg) { log(data.msg); }
+            if (data.msg === 'SUKSES' || data.finished === true || (typeof data.msg === 'string' && data.msg.startsWith('SUKSES'))) {
                 installSuccess = true;
                 document.getElementById('prog-icon').innerText = '✅';
-                document.getElementById('prog-text').innerText = 'Selesai!';
-                document.getElementById('prog-bar').style.width = '100%';
-                document.getElementById('prog-pct').innerText = '100%';
+                statusTxt.innerText = 'Selesai!';
+                bar.style.width = '100%';
+                pctTxt.innerText = '100%';
             }
-            if (data.error) { installSuccess = false; document.getElementById('prog-icon').innerText = '❌'; document.getElementById('prog-text').innerText = 'Gagal'; }
+            if (data.error) { installSuccess = false; document.getElementById('prog-icon').innerText = '❌'; statusTxt.innerText = 'Gagal'; }
         } catch(err) {}
     };
 
@@ -1055,16 +1023,16 @@ async function installManual() {
         if (!isInstalling) return;
         eventSource.close();
         isInstalling = false;
-        hideProgressOverlay();
+        setTimeout(() => { document.getElementById('progress-section').classList.remove('active'); }, 4000); document.getElementById('btn-verify').style.display = 'flex';
         alert('⚠️ Koneksi terputus.');
     };
 }
 
 function showProgressOverlay() {
     document.getElementById('progress-overlay').classList.add('show');
-    document.getElementById('prog-bar').style.width = '0%';
-    document.getElementById('prog-pct').innerText = '0%';
-    document.getElementById('prog-text').innerText = 'Memulai...';
+    bar.style.width = '0%';
+    pctTxt.innerText = '0%';
+    statusTxt.innerText = 'Memulai...';
     document.getElementById('prog-icon').innerText = '⏳';
     setProgressReset(1); setProgressReset(2); setProgressReset(3);
 }

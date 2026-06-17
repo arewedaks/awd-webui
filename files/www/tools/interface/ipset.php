@@ -1,5 +1,11 @@
 <?php
 require_once '/data/adb/php8/files/www/auth/auth_functions.php';
+require_once '/data/adb/php8/files/www/utils.php';
+
+if (!is_pro_user()) {
+    render_pro_lock_screen('IP Set / Interface Manager');
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $ip = $_POST['ip'] ?? '192.168.43.1';
     $interface = $_POST['interface'] ?? 'wlan0';

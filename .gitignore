@@ -7,6 +7,8 @@
 
 # Magisk module generated zip
 *.zip
+.zipignore
+*.bat
 
 # IDEs and Editors
 .idea/
